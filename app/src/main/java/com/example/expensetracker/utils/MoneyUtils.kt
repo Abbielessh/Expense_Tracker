@@ -18,9 +18,10 @@ fun formatMoney(amount: Double, currencyCode: String): String {
 fun sumBetween(
     transactions: List<MoneyTransaction>,
     startMillis: Long,
-    endMillis: Long
+    endMillis: Long,
+    currencyCode: String
 ): Double {
     return transactions
         .filter { it.dateMillis in startMillis..endMillis }
-        .sumOf { it.amount }
+        .sumOf { it.getConvertedAmount(currencyCode) }
 }

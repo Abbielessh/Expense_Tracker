@@ -37,9 +37,11 @@ import androidx.compose.ui.unit.sp
 import com.example.expensetracker.model.ExpenseProfile
 import com.example.expensetracker.model.TransactionType
 import com.example.expensetracker.ui.components.SummaryMiniCard
+import com.example.expensetracker.utils.CategoryIconUtils
 import com.example.expensetracker.utils.endOfDayMillis
 import com.example.expensetracker.utils.formatDate
 import com.example.expensetracker.utils.formatMoney
+import com.example.expensetracker.utils.getConvertedAmount
 import com.example.expensetracker.utils.monthStartMillis
 import com.example.expensetracker.utils.parseDateEnd
 import com.example.expensetracker.utils.parseDateStart
@@ -76,12 +78,12 @@ fun ReportsScreen(
     val customStart = parseDateStart(startDateText)
     val customEnd = parseDateEnd(endDateText)
 
-    val dailyTotal = sumBetween(expenseTransactions, todayStart, todayEnd)
-    val weeklyTotal = sumBetween(expenseTransactions, weekStart, weekEnd)
-    val monthlyTotal = sumBetween(expenseTransactions, monthStart, monthEnd)
+    val dailyTotal = sumBetween(expenseTransactions, todayStart, todayEnd, currencyCode)
+    val weeklyTotal = sumBetween(expenseTransactions, weekStart, weekEnd, currencyCode)
+    val monthlyTotal = sumBetween(expenseTransactions, monthStart, monthEnd, currencyCode)
 
     val customTotal = if (customStart != null && customEnd != null) {
-        sumBetween(expenseTransactions, customStart, customEnd)
+        sumBetween(expenseTransactions, customStart, customEnd, currencyCode)
     } else {
         0.0
     }
@@ -183,24 +185,18 @@ fun ReportsScreen(
                         Spacer(modifier = Modifier.height(8.dp))
 
                         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                            OutlinedTextField(
-                                value = startDateText,
-                                onValueChange = { startDateText = it },
-                                label = { Text("From") },
-                                placeholder = { Text("yyyy-MM-dd") },
+                            com.example.expensetracker.ui.components.AppDatePickerField(
+                                label = "From",
+                                selectedDate = startDateText,
                                 modifier = Modifier.weight(1f),
-                                shape = RoundedCornerShape(16.dp),
-                                singleLine = true
+                                onDateSelected = { startDateText = it }
                             )
 
-                            OutlinedTextField(
-                                value = endDateText,
-                                onValueChange = { endDateText = it },
-                                label = { Text("To") },
-                                placeholder = { Text("yyyy-MM-dd") },
+                            com.example.expensetracker.ui.components.AppDatePickerField(
+                                label = "To",
+                                selectedDate = endDateText,
                                 modifier = Modifier.weight(1f),
-                                shape = RoundedCornerShape(16.dp),
-                                singleLine = true
+                                onDateSelected = { endDateText = it }
                             )
                         }
 
@@ -268,7 +264,7 @@ fun ReportsScreen(
                         
                         val categoryTotals = filteredForGraph
                             .groupBy { it.category }
-                            .mapValues { entry -> entry.value.sumOf { it.amount } }
+                            .mapValues { entry -> entry.value.sumOf { it.getConvertedAmount(currencyCode) } }
                             .filterValues { it > 0.0 }
                             .toList()
                             .sortedByDescending { it.second }
@@ -366,7 +362,7 @@ fun ExpensePieChart(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = category, 
+                        text = "${CategoryIconUtils.iconForCategory(category, null)}  $category",
                         fontSize = 14.sp,
                         color = Color(0xFF344054)
                     )

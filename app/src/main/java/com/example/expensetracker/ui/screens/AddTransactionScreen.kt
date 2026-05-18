@@ -42,6 +42,7 @@ import com.example.expensetracker.model.ExpenseProfile
 import com.example.expensetracker.model.MoneyTransaction
 import com.example.expensetracker.model.TransactionType
 import com.example.expensetracker.ui.components.AddCategoryDialog
+import com.example.expensetracker.utils.CategoryIconUtils
 import com.example.expensetracker.utils.formatDate
 import com.example.expensetracker.utils.parseDateStart
 
@@ -139,11 +140,16 @@ fun AddTransactionScreen(
                             Column {
                                 Spacer(modifier = Modifier.height(10.dp))
 
+                                // Show icon preview next to category text
+                                val iconPreview = CategoryIconUtils.iconForCategory(categoryText, null)
                                 OutlinedTextField(
                                     value = categoryText,
                                     onValueChange = { categoryText = it },
                                     label = { Text("Category") },
                                     placeholder = { Text("Type manually or select from dropdown") },
+                                    leadingIcon = if (categoryText.isNotBlank()) {
+                                        { Text(iconPreview, fontSize = 18.sp) }
+                                    } else null,
                                     modifier = Modifier.fillMaxWidth(),
                                     shape = RoundedCornerShape(16.dp),
                                     singleLine = true
@@ -163,14 +169,30 @@ fun AddTransactionScreen(
                                             expanded = categoryMenuExpanded,
                                             onDismissRequest = { categoryMenuExpanded = false }
                                         ) {
-                                            profile.categories.forEach { category ->
-                                                DropdownMenuItem(
-                                                    text = { Text(category) },
-                                                    onClick = {
-                                                        categoryText = category
-                                                        categoryMenuExpanded = false
-                                                    }
-                                                )
+                                            // Prefer rich category objects if available
+                                            val richCats = profile.categoryObjects
+                                            if (richCats.isNotEmpty()) {
+                                                richCats.forEach { cat ->
+                                                    val emoji = CategoryIconUtils.emojiForKey(cat.iconKey)
+                                                    DropdownMenuItem(
+                                                        text = { Text("$emoji  ${cat.name}") },
+                                                        onClick = {
+                                                            categoryText = cat.name
+                                                            categoryMenuExpanded = false
+                                                        }
+                                                    )
+                                                }
+                                            } else {
+                                                profile.categories.forEach { category ->
+                                                    val emoji = CategoryIconUtils.iconForCategory(category, null)
+                                                    DropdownMenuItem(
+                                                        text = { Text("$emoji  $category") },
+                                                        onClick = {
+                                                            categoryText = category
+                                                            categoryMenuExpanded = false
+                                                        }
+                                                    )
+                                                }
                                             }
                                         }
                                     }
@@ -187,14 +209,10 @@ fun AddTransactionScreen(
 
                         Spacer(modifier = Modifier.height(10.dp))
 
-                        OutlinedTextField(
-                            value = dateText,
-                            onValueChange = { dateText = it },
-                            label = { Text("Date") },
-                            placeholder = { Text("yyyy-MM-dd") },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(16.dp),
-                            singleLine = true
+                        com.example.expensetracker.ui.components.AppDatePickerField(
+                            label = "Date",
+                            selectedDate = dateText,
+                            onDateSelected = { dateText = it }
                         )
 
                         Spacer(modifier = Modifier.height(10.dp))
@@ -232,6 +250,8 @@ fun AddTransactionScreen(
                                             title = finalTitle,
                                             category = finalCategory,
                                             amount = amount,
+                                            baseCurrency = currencyCode,
+                                            displayCurrency = currencyCode,
                                             dateMillis = parsedDate,
                                             note = note
                                         )

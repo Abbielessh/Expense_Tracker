@@ -1,0 +1,13 @@
+$env:Path += ";$env:LOCALAPPDATA\Android\Sdk\platform-tools"
+
+adb devices
+
+.\gradlew.bat clean
+
+.\gradlew.bat assembleDebug
+
+.\gradlew.bat installDebug
+
+adb shell am force-stop com.example.expensetracker
+
+adb shell monkey -p com.example.expensetracker 1

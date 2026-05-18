@@ -56,6 +56,8 @@ class ExpenseStore(private val context: Context) {
                             title = transactionJson.optString("title", ""),
                             category = transactionJson.optString("category", "Other"),
                             amount = transactionJson.optDouble("amount", 0.0),
+                            baseCurrency = transactionJson.optString("baseCurrency", "INR"),
+                            displayCurrency = transactionJson.optString("displayCurrency", "INR"),
                             dateMillis = transactionJson.optLong("dateMillis", System.currentTimeMillis()),
                             note = transactionJson.optString("note", "")
                         )
@@ -109,6 +111,8 @@ class ExpenseStore(private val context: Context) {
                 transactionJson.put("title", transaction.title)
                 transactionJson.put("category", transaction.category)
                 transactionJson.put("amount", transaction.amount)
+                transactionJson.put("baseCurrency", transaction.baseCurrency)
+                transactionJson.put("displayCurrency", transaction.displayCurrency)
                 transactionJson.put("dateMillis", transaction.dateMillis)
                 transactionJson.put("note", transaction.note)
                 transactionsJson.put(transactionJson)
