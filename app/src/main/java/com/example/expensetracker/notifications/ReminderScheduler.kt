@@ -70,19 +70,29 @@ object ReminderScheduler {
                 set(Calendar.MINUTE, minute)
                 set(Calendar.SECOND, 0)
                 set(Calendar.MILLISECOND, 0)
-                // If the time is already past today, schedule for tomorrow
+                // If the time has already passed today, schedule for tomorrow
                 if (timeInMillis <= System.currentTimeMillis()) {
                     add(Calendar.DAY_OF_MONTH, 1)
                 }
             }
 
-            alarmManager.setInexactRepeating(
-                AlarmManager.RTC_WAKEUP,
-                cal.timeInMillis,
-                AlarmManager.INTERVAL_DAY,
-                pendingIntent
-            )
-            Log.d(TAG, "Reminder scheduled at $hour:$minute, first fire: ${cal.time}")
+            // Use setExactAndAllowWhileIdle for reliable delivery, with fallback
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !alarmManager.canScheduleExactAlarms()) {
+                // Exact alarm permission not granted — use inexact wakeup alarm as fallback
+                alarmManager.setAndAllowWhileIdle(
+                    AlarmManager.RTC_WAKEUP,
+                    cal.timeInMillis,
+                    pendingIntent
+                )
+                Log.d(TAG, "Scheduled inexact reminder (no exact alarm permission) at $hour:$minute")
+            } else {
+                alarmManager.setExactAndAllowWhileIdle(
+                    AlarmManager.RTC_WAKEUP,
+                    cal.timeInMillis,
+                    pendingIntent
+                )
+                Log.d(TAG, "Scheduled exact reminder at $hour:$minute, fires: ${cal.time}")
+            }
         } catch (e: Exception) {
             Log.e(TAG, "scheduleReminder failed", e)
         }

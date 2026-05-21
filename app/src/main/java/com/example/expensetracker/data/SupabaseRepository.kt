@@ -173,22 +173,31 @@ class SupabaseRepository {
         val profiles = resolvedProfiles.map { p ->
             val profileId = p.id ?: return@map ExpenseProfile(name = p.name)
 
+            // Ensure all default categories exist in Supabase for this profile
+            try { ensureDefaultCategoriesForProfile(profileId) } catch (_: Exception) {}
+
             val catDtos = client.postgrest["categories"]
                 .select { filter { eq("profile_id", profileId) } }
                 .decodeList<CategoryDto>()
 
-            val categoryObjects = if (catDtos.isEmpty()) {
-                defaultCategoryObjects()
-            } else {
-                catDtos.map { dto ->
-                    Category(
-                        id = dto.id ?: "",
-                        name = dto.name,
-                        iconKey = dto.icon_key ?: com.example.expensetracker.utils.CategoryIconUtils.guessIconKeyFromName(dto.name)
-                    )
+            // Build remote category objects
+            val remoteCategoryObjects = catDtos.map { dto ->
+                Category(
+                    id = dto.id ?: "",
+                    name = dto.name,
+                    iconKey = dto.icon_key ?: com.example.expensetracker.utils.CategoryIconUtils.guessIconKeyFromName(dto.name)
+                )
+            }
+            // Merge with defaults: always include all default categories
+            val defaults = defaultCategoryObjects()
+            val merged = remoteCategoryObjects.toMutableList()
+            for (default in defaults) {
+                if (merged.none { it.name.equals(default.name, ignoreCase = true) }) {
+                    merged.add(default)
                 }
             }
-            val categories = if (catDtos.isEmpty()) defaultCategories() else catDtos.map { it.name }
+            val categoryObjects = merged.toList()
+            val categories = categoryObjects.map { it.name }
 
             val txDtos = client.postgrest["transactions"]
                 .select { filter { eq("profile_id", profileId) } }
@@ -310,6 +319,31 @@ class SupabaseRepository {
     }
 
     // ── Category operations ───────────────────────────────────────────────────
+
+    suspend fun ensureDefaultCategoriesForProfile(profileId: String) {
+        val uid = getUserId() ?: return
+        Log.d(TAG, "ensureDefaultCategoriesForProfile profileId=$profileId")
+        try {
+            val existing = client.postgrest["categories"]
+                .select { filter { eq("profile_id", profileId) } }
+                .decodeList<CategoryDto>()
+            val defaults = defaultCategoryObjects()
+            for (default in defaults) {
+                val match = existing.firstOrNull { it.name.equals(default.name, ignoreCase = true) }
+                if (match == null) {
+                    Log.d(TAG, "Inserting missing default category: ${default.name}")
+                    client.postgrest["categories"].insert(
+                        CategoryDto(user_id = uid, profile_id = profileId, name = default.name, icon_key = default.iconKey)
+                    )
+                } else if ((match.icon_key.isNullOrBlank() || match.icon_key == "other") && default.iconKey != "other") {
+                    // Update icon_key for categories that have a better icon now (e.g. Zepto)
+                    match.id?.let { catId -> updateCategoryIcon(catId, default.iconKey) }
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "ensureDefaultCategoriesForProfile failed", e)
+        }
+    }
 
     suspend fun insertCategory(name: String, profileId: String, iconKey: String = "other"): Category {
         val uid = getUserId() ?: error("Not logged in")

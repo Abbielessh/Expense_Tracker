@@ -23,19 +23,23 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import com.example.expensetracker.model.ExpenseAppData
+import com.example.expensetracker.notifications.ReminderReceiver
 import com.example.expensetracker.notifications.ReminderScheduler
 import com.example.expensetracker.ui.components.CurrencyDialog
+import com.example.expensetracker.utils.DisplayRefreshRateUtils
+import com.example.expensetracker.utils.PdfSplitType
 import kotlinx.coroutines.launch
 
 @Composable
 fun SettingsScreen(
     appData: ExpenseAppData,
     onCurrencySelected: (String) -> Unit,
-    onExportPdf: () -> Unit,
+    onExportPdf: (PdfSplitType) -> Unit,
     onExportCsv: () -> Unit,
     onLogout: () -> Unit,
     onNavigateToBudgets: () -> Unit,
     onNavigateToRecurring: () -> Unit = {},
+    onApplyRefreshRate: (mode: String, hz: Float) -> Unit = { _, _ -> },
     repository: com.example.expensetracker.data.SupabaseRepository
 ) {
     val context = LocalContext.current
@@ -43,12 +47,40 @@ fun SettingsScreen(
 
     var showCurrencyDialog by rememberSaveable { mutableStateOf(false) }
     var showChangePassword by rememberSaveable { mutableStateOf(false) }
+    var showPdfSplitDialog by remember { mutableStateOf(false) }
+    var selectedSplitType  by remember { mutableStateOf(PdfSplitType.NONE) }
+
+    // ── Smooth Display state ───────────────────────────────────────────────────
+    val availableHz = remember { DisplayRefreshRateUtils.getAvailableRefreshRates(context) }
+    val currentHz  = remember { DisplayRefreshRateUtils.getCurrentRefreshRate(context) }
+    var refreshMode by rememberSaveable {
+        mutableStateOf(DisplayRefreshRateUtils.loadSavedMode(context))
+    }
+    var refreshHz by rememberSaveable {
+        mutableStateOf(DisplayRefreshRateUtils.loadSavedHz(context))
+    }
+    var refreshDropExpanded  by remember { mutableStateOf(false) }
+    var refreshMessage       by rememberSaveable { mutableStateOf("") }
 
     // Daily reminder state
     val localSettings = remember { ReminderScheduler.loadLocal(context) }
     var reminderEnabled by rememberSaveable { mutableStateOf(localSettings.first) }
+    // Internal 24-hour values
     var reminderHour by rememberSaveable { mutableStateOf(localSettings.second) }
     var reminderMinute by rememberSaveable { mutableStateOf(localSettings.third) }
+    // Derived 12-hour display values
+    var hour12 by rememberSaveable {
+        mutableStateOf(
+            when {
+                localSettings.second == 0 -> 12
+                localSettings.second <= 12 -> localSettings.second
+                else -> localSettings.second - 12
+            }
+        )
+    }
+    var selectedMinute by rememberSaveable { mutableStateOf(localSettings.third) }
+    var isPm by rememberSaveable { mutableStateOf(localSettings.second >= 12) }
+
     var reminderSaving by rememberSaveable { mutableStateOf(false) }
     var reminderMessage by rememberSaveable { mutableStateOf("") }
     var notifPermDenied by rememberSaveable { mutableStateOf(false) }
@@ -61,6 +93,13 @@ fun SettingsScreen(
                 reminderEnabled = it.dailyReminderEnabled
                 reminderHour = it.reminderHour
                 reminderMinute = it.reminderMinute
+                hour12 = when {
+                    it.reminderHour == 0 -> 12
+                    it.reminderHour <= 12 -> it.reminderHour
+                    else -> it.reminderHour - 12
+                }
+                selectedMinute = it.reminderMinute
+                isPm = it.reminderHour >= 12
             }
         } catch (e: Exception) {
             // fallback to local is fine
@@ -112,6 +151,24 @@ fun SettingsScreen(
         reminderMessage = if (enabled) "Daily reminder enabled ✓" else "Daily reminder disabled"
     }
 
+    /** Convert 12-hour picker values to 24-hour and update reminder state */
+    fun commitTimeSelection() {
+        reminderHour = when {
+            !isPm && hour12 == 12 -> 0   // 12 AM = 0
+            isPm && hour12 != 12 -> hour12 + 12  // 1-11 PM = 13-23
+            else -> hour12  // 12 PM = 12, 1-11 AM = 1-11
+        }
+        reminderMinute = selectedMinute
+    }
+
+    /** Format for display e.g. "09:00 PM" */
+    fun formatDisplayTime(): String {
+        val h = hour12.toString().padStart(2, '0')
+        val m = selectedMinute.toString().padStart(2, '0')
+        val ampm = if (isPm) "PM" else "AM"
+        return "$h:$m $ampm"
+    }
+
     Box(
         modifier = Modifier.fillMaxSize().background(
             Brush.verticalGradient(listOf(Color(0xFFEAF2FF), Color(0xFFF8FBFF), Color(0xFFFFFFFF)))
@@ -119,7 +176,7 @@ fun SettingsScreen(
     ) {
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
-            contentPadding = PaddingValues(top = 16.dp, bottom = 100.dp),
+            contentPadding = PaddingValues(top = 16.dp, bottom = 80.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             item {
@@ -187,53 +244,84 @@ fun SettingsScreen(
 
                         Spacer(modifier = Modifier.height(12.dp))
 
-                        // Time picker row
+                        // ── Dropdown time picker ─────────────────────────────
                         Text("Reminder time", fontSize = 14.sp, color = Color(0xFF667085))
                         Spacer(modifier = Modifier.height(8.dp))
+
                         Row(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
                         ) {
-                            // Hour picker
-                            OutlinedButton(
-                                onClick = {},
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Text("Hour: $reminderHour")
+                            // Hour dropdown (1–12)
+                            var hourMenuExpanded by remember { mutableStateOf(false) }
+                            Box(modifier = Modifier.weight(1f)) {
+                                OutlinedButton(
+                                    onClick = { hourMenuExpanded = true },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(12.dp)
+                                ) { Text("Hour: ${hour12.toString().padStart(2, '0')}") }
+                                DropdownMenu(
+                                    expanded = hourMenuExpanded,
+                                    onDismissRequest = { hourMenuExpanded = false }
+                                ) {
+                                    (1..12).forEach { h ->
+                                        DropdownMenuItem(
+                                            text = { Text(h.toString().padStart(2, '0')) },
+                                            onClick = { hour12 = h; hourMenuExpanded = false; commitTimeSelection() }
+                                        )
+                                    }
+                                }
                             }
-                            Column(modifier = Modifier.weight(1f)) {
-                                Slider(
-                                    value = reminderHour.toFloat(),
-                                    onValueChange = { reminderHour = it.toInt() },
-                                    valueRange = 0f..23f,
-                                    steps = 22,
-                                    colors = SliderDefaults.colors(activeTrackColor = Color(0xFF2563EB))
-                                )
+
+                            // Minute dropdown (00, 05, 10 … 55)
+                            var minMenuExpanded by remember { mutableStateOf(false) }
+                            Box(modifier = Modifier.weight(1f)) {
+                                OutlinedButton(
+                                    onClick = { minMenuExpanded = true },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(12.dp)
+                                ) { Text("Min: ${selectedMinute.toString().padStart(2, '0')}") }
+                                DropdownMenu(
+                                    expanded = minMenuExpanded,
+                                    onDismissRequest = { minMenuExpanded = false }
+                                ) {
+                                    listOf(0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55).forEach { m ->
+                                        DropdownMenuItem(
+                                            text = { Text(m.toString().padStart(2, '0')) },
+                                            onClick = { selectedMinute = m; minMenuExpanded = false; commitTimeSelection() }
+                                        )
+                                    }
+                                }
                             }
-                        }
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            OutlinedButton(
-                                onClick = {},
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Text("Min: ${reminderMinute.toString().padStart(2, '0')}")
-                            }
-                            Column(modifier = Modifier.weight(1f)) {
-                                Slider(
-                                    value = reminderMinute.toFloat(),
-                                    onValueChange = { reminderMinute = it.toInt() },
-                                    valueRange = 0f..59f,
-                                    steps = 58,
-                                    colors = SliderDefaults.colors(activeTrackColor = Color(0xFF2563EB))
-                                )
+
+                            // AM/PM dropdown
+                            var amPmMenuExpanded by remember { mutableStateOf(false) }
+                            Box(modifier = Modifier.weight(1f)) {
+                                OutlinedButton(
+                                    onClick = { amPmMenuExpanded = true },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(12.dp)
+                                ) { Text(if (isPm) "PM" else "AM") }
+                                DropdownMenu(
+                                    expanded = amPmMenuExpanded,
+                                    onDismissRequest = { amPmMenuExpanded = false }
+                                ) {
+                                    DropdownMenuItem(
+                                        text = { Text("AM") },
+                                        onClick = { isPm = false; amPmMenuExpanded = false; commitTimeSelection() }
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text("PM") },
+                                        onClick = { isPm = true; amPmMenuExpanded = false; commitTimeSelection() }
+                                    )
+                                }
                             }
                         }
 
+                        Spacer(modifier = Modifier.height(6.dp))
                         Text(
-                            "Set to: ${reminderHour.toString().padStart(2,'0')}:${reminderMinute.toString().padStart(2,'0')}",
+                            "Selected: ${formatDisplayTime()}",
                             fontSize = 13.sp, color = Color(0xFF2563EB), fontWeight = FontWeight.Bold
                         )
 
@@ -243,7 +331,7 @@ fun SettingsScreen(
                             onClick = {
                                 reminderSaving = true
                                 reminderMessage = ""
-                                // Save time and reschedule if enabled
+                                commitTimeSelection()
                                 ReminderScheduler.saveLocally(context, reminderEnabled, reminderHour, reminderMinute)
                                 if (reminderEnabled) {
                                     ReminderScheduler.cancelReminder(context)
@@ -270,10 +358,165 @@ fun SettingsScreen(
                             Text("Save Reminder Settings", fontWeight = FontWeight.Bold, color = Color.White)
                         }
 
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        // Send Test Notification button
+                        OutlinedButton(
+                            onClick = {
+                                if (!hasNotifPermission()) {
+                                    reminderMessage = "⚠️ Notification permission required."
+                                } else {
+                                    ReminderReceiver.showReminderNotification(context)
+                                    reminderMessage = "Test notification sent ✓"
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(14.dp)
+                        ) {
+                            Text("🔔 Send Test Notification", fontWeight = FontWeight.Bold)
+                        }
+
                         if (reminderMessage.isNotBlank()) {
                             Spacer(modifier = Modifier.height(6.dp))
                             Text(reminderMessage, fontSize = 13.sp,
                                 color = if (reminderMessage.contains("✓")) Color(0xFF059669) else Color(0xFF667085))
+                        }
+
+                        // Debug info
+                        Spacer(modifier = Modifier.height(10.dp))
+                        HorizontalDivider(color = Color(0xFFE5E7EB))
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text("Debug", fontSize = 12.sp, color = Color(0xFF9CA3AF), fontWeight = FontWeight.Bold)
+                        Text("Reminder enabled: ${if (reminderEnabled) "Yes" else "No"}",
+                            fontSize = 12.sp, color = Color(0xFF6B7280))
+                        Text("Reminder time: ${formatDisplayTime()} (24h: ${reminderHour.toString().padStart(2,'0')}:${reminderMinute.toString().padStart(2,'0')})",
+                            fontSize = 12.sp, color = Color(0xFF6B7280))
+                        Text("Notification permission: ${if (hasNotifPermission()) "Granted" else "Denied"}",
+                            fontSize = 12.sp, color = if (hasNotifPermission()) Color(0xFF059669) else Color(0xFFDC2626))
+                    }
+                }
+            }
+
+            // Smooth Display
+            item {
+                ElevatedCard(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.elevatedCardColors(containerColor = Color.White),
+                    elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)
+                ) {
+                    Column(modifier = Modifier.padding(18.dp)) {
+                        Text(
+                            "⚡ Smooth Display",
+                            fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color(0xFF101828)
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            "Set preferred display refresh rate for smoother scrolling.",
+                            fontSize = 14.sp, color = Color(0xFF667085)
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                            Text(
+                                "Current: ${currentHz.toInt()}Hz",
+                                fontSize = 13.sp, color = Color(0xFF2563EB), fontWeight = FontWeight.Medium
+                            )
+                            Text(
+                                "Available: ${availableHz.joinToString(", ") { "${it.toInt()}Hz" }}",
+                                fontSize = 13.sp, color = Color(0xFF667085)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        // Dropdown selector
+                        Box {
+                            OutlinedButton(
+                                onClick = { refreshDropExpanded = true },
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Text(
+                                    DisplayRefreshRateUtils.modeLabel(refreshMode, refreshHz, availableHz),
+                                    modifier = Modifier.weight(1f)
+                                )
+                                Text("▾", fontSize = 14.sp, color = Color(0xFF667085))
+                            }
+                            DropdownMenu(
+                                expanded = refreshDropExpanded,
+                                onDismissRequest = { refreshDropExpanded = false }
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("Auto (system default)") },
+                                    onClick = {
+                                        refreshMode = DisplayRefreshRateUtils.MODE_AUTO
+                                        refreshDropExpanded = false
+                                        refreshMessage = ""
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = {
+                                        Text("Highest Available (${(availableHz.maxOrNull() ?: 60f).toInt()}Hz)")
+                                    },
+                                    onClick = {
+                                        refreshMode = DisplayRefreshRateUtils.MODE_HIGHEST
+                                        refreshDropExpanded = false
+                                        refreshMessage = ""
+                                    }
+                                )
+                                availableHz.forEach { hz ->
+                                    DropdownMenuItem(
+                                        text = { Text("${hz.toInt()}Hz") },
+                                        onClick = {
+                                            refreshMode = DisplayRefreshRateUtils.MODE_CUSTOM
+                                            refreshHz   = hz
+                                            refreshDropExpanded = false
+                                            refreshMessage = ""
+                                        }
+                                    )
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        Button(
+                            onClick = {
+                                DisplayRefreshRateUtils.saveMode(context, refreshMode, refreshHz)
+                                onApplyRefreshRate(refreshMode, refreshHz)
+                                refreshMessage = when (refreshMode) {
+                                    DisplayRefreshRateUtils.MODE_AUTO ->
+                                        "Display set to Auto (system default)."
+                                    DisplayRefreshRateUtils.MODE_HIGHEST ->
+                                        "Using highest available (${(availableHz.maxOrNull() ?: 60f).toInt()}Hz)."
+                                    DisplayRefreshRateUtils.MODE_CUSTOM -> {
+                                        val supported = availableHz.any {
+                                            it >= refreshHz - 1f && it <= refreshHz + 1f
+                                        }
+                                        if (supported) "Refresh rate set to ${refreshHz.toInt()}Hz."
+                                        else "${refreshHz.toInt()}Hz is not available on this device."
+                                    }
+                                    else -> ""
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(14.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2563EB))
+                        ) {
+                            Text("Apply", fontWeight = FontWeight.Bold, color = Color.White)
+                        }
+
+                        if (refreshMessage.isNotBlank()) {
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                refreshMessage,
+                                fontSize = 13.sp,
+                                color = if (refreshMessage.contains("not available"))
+                                    Color(0xFFDC2626)
+                                else
+                                    Color(0xFF059669)
+                            )
                         }
                     }
                 }
@@ -293,7 +536,7 @@ fun SettingsScreen(
                         Text("Download a PDF or CSV report for the active profile", fontSize = 14.sp, color = Color(0xFF667085))
                         Spacer(modifier = Modifier.height(12.dp))
                         Button(
-                            onClick = onExportPdf, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp),
+                            onClick = { showPdfSplitDialog = true }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp),
                             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00A3FF))
                         ) { Text("Export PDF Report", fontWeight = FontWeight.Bold, color = Color.White) }
                         Spacer(modifier = Modifier.height(8.dp))
@@ -364,6 +607,59 @@ fun SettingsScreen(
         ChangePasswordDialog(
             repository = repository,
             onDismiss = { showChangePassword = false }
+        )
+    }
+
+    // ── PDF split-type selection dialog ────────────────────────────────────────
+    if (showPdfSplitDialog) {
+        AlertDialog(
+            onDismissRequest = { showPdfSplitDialog = false },
+            title = { Text("Export PDF Report", fontWeight = FontWeight.Bold) },
+            text = {
+                Column {
+                    Text(
+                        "Choose how to split the report:",
+                        fontSize = 14.sp, color = Color(0xFF667085)
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                    PdfSplitType.values().forEach { type ->
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { selectedSplitType = type }
+                                .padding(vertical = 6.dp)
+                        ) {
+                            RadioButton(
+                                selected = selectedSplitType == type,
+                                onClick = { selectedSplitType = type }
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Column {
+                                Text(type.label, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                                val desc = when (type) {
+                                    PdfSplitType.NONE  -> "All transactions in one list"
+                                    PdfSplitType.DAY   -> "Group by day with daily totals"
+                                    PdfSplitType.WEEK  -> "Group by week with weekly totals"
+                                    PdfSplitType.MONTH -> "Group by month with monthly totals"
+                                }
+                                Text(desc, fontSize = 11.sp, color = Color(0xFF98A2B3))
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    showPdfSplitDialog = false
+                    onExportPdf(selectedSplitType)
+                }) {
+                    Text("Export", fontWeight = FontWeight.Bold, color = Color(0xFF2563EB))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showPdfSplitDialog = false }) { Text("Cancel") }
+            }
         )
     }
 }

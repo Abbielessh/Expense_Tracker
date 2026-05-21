@@ -35,7 +35,7 @@ import androidx.compose.ui.unit.sp
 import com.example.expensetracker.model.MoneyTransaction
 import com.example.expensetracker.model.TransactionType
 import com.example.expensetracker.utils.CategoryIconUtils
-import com.example.expensetracker.utils.formatDate
+import com.example.expensetracker.utils.formatDisplayDate
 import com.example.expensetracker.utils.formatMoney
 
 @Composable
@@ -104,7 +104,7 @@ fun TransactionRow(
                 Column(modifier = Modifier.weight(1f)) {
                     Text(transaction.title, fontSize = 17.sp, fontWeight = FontWeight.Bold, color = Color(0xFF101828))
                     Spacer(modifier = Modifier.height(3.dp))
-                    Text("${transaction.category} • ${formatDate(transaction.dateMillis)}", fontSize = 13.sp, color = Color(0xFF667085))
+                    Text("${transaction.category} • ${formatDisplayDate(transaction.dateMillis)}", fontSize = 13.sp, color = Color(0xFF667085))
                     if (transaction.note.isNotBlank()) {
                         Spacer(modifier = Modifier.height(3.dp))
                         Text(transaction.note, fontSize = 12.sp, color = Color(0xFF98A2B3))

@@ -79,6 +79,8 @@ fun defaultCategories(): List<String> {
         "Education",
         "Entertainment",
         "Fuel",
+        "Zepto",
+        "Personal",
         "Other"
     )
 }
@@ -94,6 +96,8 @@ fun defaultCategoryObjects(): List<Category> {
         Category(name = "Education", iconKey = "education"),
         Category(name = "Entertainment", iconKey = "entertainment"),
         Category(name = "Fuel", iconKey = "fuel"),
+        Category(name = "Zepto", iconKey = "zepto"),
+        Category(name = "Personal", iconKey = "personal"),
         Category(name = "Other", iconKey = "other")
     )
 }

@@ -32,12 +32,22 @@ fun AppDatePickerField(
 ) {
     var showDatePicker by remember { mutableStateOf(false) }
 
-    val formatter = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+    val internalFormatter = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+    val displayFormatter  = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+
     val initialMillis = try {
-        if (selectedDate.isNotEmpty()) formatter.parse(selectedDate)?.time else null
+        if (selectedDate.isNotEmpty()) internalFormatter.parse(selectedDate)?.time else null
     } catch (e: Exception) {
         null
     }
+
+    // Convert internal yyyy-MM-dd → display dd/MM/yyyy
+    val displayDate = try {
+        if (selectedDate.isNotEmpty()) {
+            val d = internalFormatter.parse(selectedDate)
+            if (d != null) displayFormatter.format(d) else selectedDate
+        } else ""
+    } catch (_: Exception) { selectedDate }
 
     val datePickerState = rememberDatePickerState(
         initialSelectedDateMillis = initialMillis ?: System.currentTimeMillis()
@@ -45,7 +55,7 @@ fun AppDatePickerField(
 
     Box(modifier = modifier) {
         OutlinedTextField(
-            value = selectedDate,
+            value = displayDate,
             onValueChange = { },
             label = { Text(label) },
             readOnly = true,
@@ -75,7 +85,7 @@ fun AppDatePickerField(
             confirmButton = {
                 TextButton(onClick = {
                     datePickerState.selectedDateMillis?.let { millis ->
-                        val dateString = formatter.format(Date(millis))
+                        val dateString = internalFormatter.format(Date(millis))
                         onDateSelected(dateString)
                     }
                     showDatePicker = false

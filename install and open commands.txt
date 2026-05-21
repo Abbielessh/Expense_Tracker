@@ -1,13 +1,19 @@
 $env:Path += ";$env:LOCALAPPDATA\Android\Sdk\platform-tools"
-
 adb devices
+.\gradlew.bat clean
+.\gradlew.bat assembleDebug
+.\gradlew.bat installDebug
+adb shell am force-stop com.example.expensetracker
+adb shell monkey -p com.example.expensetracker 1
+
+
+to get apk file
 
 .\gradlew.bat clean
-
 .\gradlew.bat assembleDebug
-
-.\gradlew.bat installDebug
-
-adb shell am force-stop com.example.expensetracker
-
-adb shell monkey -p com.example.expensetracker 1
+New-Item -ItemType Directory -Force "C:\Kattrapin animation Project\App"
+Copy-Item `
+  "app\build\outputs\apk\debug\app-debug.apk" `
+  "C:\Kattrapin animation Project\App\ExpenseTracker.apk" `
+  -Force
+explorer "C:\Kattrapin animation Project\App"

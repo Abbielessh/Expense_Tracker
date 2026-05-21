@@ -21,8 +21,14 @@ class ReminderReceiver : BroadcastReceiver() {
         Log.d(TAG, "onReceive: showing daily reminder notification")
         try {
             showReminderNotification(context)
+            // Reschedule for next day so the alarm keeps firing daily
+            val (enabled, hour, minute) = ReminderScheduler.loadLocal(context)
+            if (enabled) {
+                ReminderScheduler.scheduleReminder(context, hour, minute)
+                Log.d(TAG, "Rescheduled next reminder at $hour:$minute")
+            }
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to show notification", e)
+            Log.e(TAG, "Failed to show/reschedule notification", e)
         }
     }
 
@@ -36,7 +42,7 @@ class ReminderReceiver : BroadcastReceiver() {
                 val channel = NotificationChannel(
                     CHANNEL_ID,
                     CHANNEL_NAME,
-                    NotificationManager.IMPORTANCE_DEFAULT
+                    NotificationManager.IMPORTANCE_HIGH
                 ).apply {
                     description = "Daily reminder to record your expenses"
                 }
@@ -59,7 +65,7 @@ class ReminderReceiver : BroadcastReceiver() {
                     .setContentText("Don't forget to record your spending for today.")
                     .setAutoCancel(true)
                     .setContentIntent(pendingIntent)
-                    .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                    .setPriority(NotificationCompat.PRIORITY_HIGH)
                     .build()
 
                 notificationManager.notify(NOTIFICATION_ID, notification)

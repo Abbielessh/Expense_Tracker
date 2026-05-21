@@ -16,7 +16,7 @@ suspend fun createCsvContent(
     val safeProfileName = profile.name.replace("\"", "\"\"")
     
     for (t in profile.transactions) {
-        val date = formatDate(t.dateMillis)
+        val date = formatDisplayDate(t.dateMillis)
         val type = t.type.name
         val title = t.title.replace("\"", "\"\"")
         val category = t.category.replace("\"", "\"\"")

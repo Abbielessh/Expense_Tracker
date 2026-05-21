@@ -1,11 +1,9 @@
 package com.example.expensetracker.ui.screens
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -35,7 +33,7 @@ import com.example.expensetracker.utils.formatMoney
 import com.example.expensetracker.utils.getConvertedAmount
 import java.util.Calendar
 
-// ── Filter definitions ────────────────────────────────────────────────────────
+// ── Filter definitions (shared with AllTransactionsScreen) ───────────────────
 enum class TxFilter(val label: String) {
     ALL("All"),
     EXPENSE("Expense"),
@@ -45,69 +43,38 @@ enum class TxFilter(val label: String) {
     THIS_MONTH("This Month")
 }
 
+private const val RECENT_LIMIT = 5
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     appData: ExpenseAppData,
     activeProfile: ExpenseProfile,
     recurringList: List<RecurringTransaction> = emptyList(),
-    onUpdateTransaction: (MoneyTransaction) -> Unit,
-    onDeleteTransaction: (String) -> Unit
+    onUpdateTransaction: (MoneyTransaction, onDone: () -> Unit) -> Unit,
+    onDeleteTransaction: (String, onDone: () -> Unit) -> Unit,
+    onViewAllTransactions: () -> Unit
 ) {
     var transactionToEdit by remember { mutableStateOf<MoneyTransaction?>(null) }
     var deletingId by remember { mutableStateOf<String?>(null) }
-    var searchQuery by rememberSaveable { mutableStateOf("") }
-    var activeFilter by rememberSaveable { mutableStateOf(TxFilter.ALL) }
-    var categoryFilter by rememberSaveable { mutableStateOf<String?>(null) }
+    var isEditSaving by remember { mutableStateOf(false) }
 
-    // Apply all filters + search
-    val now = Calendar.getInstance()
-    val filtered = activeProfile.transactions
-        .sortedByDescending { it.dateMillis }
-        .filter { tx ->
-            // Type / time filter
-            when (activeFilter) {
-                TxFilter.ALL -> true
-                TxFilter.EXPENSE -> tx.type == TransactionType.EXPENSE
-                TxFilter.INCOME -> tx.type == TransactionType.INCOME
-                TxFilter.TODAY -> {
-                    val cal = Calendar.getInstance().apply { timeInMillis = tx.dateMillis }
-                    cal.get(Calendar.DAY_OF_YEAR) == now.get(Calendar.DAY_OF_YEAR) &&
-                    cal.get(Calendar.YEAR) == now.get(Calendar.YEAR)
-                }
-                TxFilter.THIS_WEEK -> {
-                    val cal = Calendar.getInstance().apply { timeInMillis = tx.dateMillis }
-                    cal.get(Calendar.WEEK_OF_YEAR) == now.get(Calendar.WEEK_OF_YEAR) &&
-                    cal.get(Calendar.YEAR) == now.get(Calendar.YEAR)
-                }
-                TxFilter.THIS_MONTH -> {
-                    val cal = Calendar.getInstance().apply { timeInMillis = tx.dateMillis }
-                    cal.get(Calendar.MONTH) == now.get(Calendar.MONTH) &&
-                    cal.get(Calendar.YEAR) == now.get(Calendar.YEAR)
-                }
-            }
-        }
-        .filter { tx ->
-            // Category filter
-            categoryFilter == null || tx.category.equals(categoryFilter, ignoreCase = true)
-        }
-        .filter { tx ->
-            // Search query
-            if (searchQuery.isBlank()) true
-            else {
-                val q = searchQuery.lowercase()
-                tx.title.lowercase().contains(q) ||
-                tx.category.lowercase().contains(q) ||
-                tx.note.lowercase().contains(q) ||
-                tx.amount.toString().contains(q)
-            }
-        }
+    // Latest 5, newest first — cached, only recomputed when transactions change
+    val recentTransactions = remember(activeProfile.transactions) {
+        activeProfile.transactions
+            .sortedByDescending { it.dateMillis }
+            .take(RECENT_LIMIT)
+    }
+    val totalCount = activeProfile.transactions.size
+    val hasMore = totalCount > RECENT_LIMIT
 
-    // Upcoming recurring (next 3, sorted by due date)
-    val upcoming = recurringList
-        .filter { it.isActive && it.nextDueDate.isNotBlank() }
-        .sortedBy { it.nextDueDate }
-        .take(3)
+    // Upcoming recurring (next 3, sorted by due date) — cached
+    val upcoming = remember(recurringList) {
+        recurringList
+            .filter { it.isActive && it.nextDueDate.isNotBlank() }
+            .sortedBy { it.nextDueDate }
+            .take(3)
+    }
 
     Box(
         modifier = Modifier
@@ -116,7 +83,7 @@ fun HomeScreen(
     ) {
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
-            contentPadding = PaddingValues(top = 16.dp, bottom = 100.dp),
+            contentPadding = PaddingValues(top = 16.dp, bottom = 80.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             // Header
@@ -146,7 +113,7 @@ fun HomeScreen(
             // Summary card
             item { BalanceSummaryCard(profile = activeProfile, currencyCode = appData.currencyCode) }
 
-            // Upcoming Recurring card (only shown if there are upcoming items)
+            // Upcoming Recurring card
             if (upcoming.isNotEmpty()) {
                 item {
                     ElevatedCard(
@@ -177,7 +144,7 @@ fun HomeScreen(
                                         Spacer(modifier = Modifier.width(6.dp))
                                         Column {
                                             Text(rec.title, fontSize = 14.sp, fontWeight = FontWeight.Medium)
-                                            Text("${rec.frequency} • ${rec.nextDueDate}", fontSize = 11.sp, color = Color(0xFF667085))
+                                            Text("${rec.frequency} • ${com.example.expensetracker.utils.formatDisplayDateStr(rec.nextDueDate)}", fontSize = 11.sp, color = Color(0xFF667085))
                                         }
                                     }
                                     Text(
@@ -192,96 +159,36 @@ fun HomeScreen(
                 }
             }
 
-            // Search bar
-            item {
-                OutlinedTextField(
-                    value = searchQuery,
-                    onValueChange = { searchQuery = it },
-                    label = { Text("Search transactions…") },
-                    singleLine = true,
-                    shape = RoundedCornerShape(16.dp),
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        unfocusedContainerColor = Color.White,
-                        focusedContainerColor = Color.White
-                    )
-                )
-            }
-
-            // Filter chips row
-            item {
-                Row(
-                    modifier = Modifier.horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    TxFilter.entries.forEach { filter ->
-                        FilterChip(
-                            selected = activeFilter == filter,
-                            onClick = { activeFilter = filter },
-                            label = { Text(filter.label, fontSize = 12.sp) },
-                            shape = RoundedCornerShape(10.dp)
-                        )
-                    }
-                    // Category chips with icons
-                    activeProfile.categories.forEach { cat ->
-                        val icon = CategoryIconUtils.iconForCategory(cat, null)
-                        FilterChip(
-                            selected = categoryFilter == cat,
-                            onClick = { categoryFilter = if (categoryFilter == cat) null else cat },
-                            label = { Text("$icon $cat", fontSize = 12.sp) },
-                            shape = RoundedCornerShape(10.dp),
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = Color(0xFF10B981),
-                                selectedLabelColor = Color.White
-                            )
-                        )
-                    }
-                }
-            }
-
-            // Transactions header
+            // Recent Transactions header
             item {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        "Transactions", fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold, color = Color(0xFF101828)
-                    )
-                    if (filtered.isNotEmpty()) {
-                        Text("${filtered.size} results", fontSize = 12.sp, color = Color(0xFF667085))
+                    Column {
+                        Text(
+                            "Recent Transactions", fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold, color = Color(0xFF101828)
+                        )
+                        if (hasMore) {
+                            Text(
+                                "Showing latest $RECENT_LIMIT of $totalCount",
+                                fontSize = 12.sp, color = Color(0xFF667085)
+                            )
+                        }
+                    }
+                    if (totalCount > 0) {
+                        Text("$totalCount total", fontSize = 12.sp, color = Color(0xFF667085))
                     }
                 }
             }
 
-            // Transaction list
-            if (filtered.isEmpty()) {
-                item {
-                    if (activeProfile.transactions.isEmpty()) {
-                        EmptyStateCard()
-                    } else {
-                        ElevatedCard(
-                            modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp),
-                            colors = CardDefaults.elevatedCardColors(containerColor = Color.White)
-                        ) {
-                            Column(
-                                modifier = Modifier.padding(20.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                Text("🔍 No matching transactions found.", fontSize = 14.sp, color = Color(0xFF667085))
-                                if (searchQuery.isNotBlank() || categoryFilter != null) {
-                                    TextButton(onClick = { searchQuery = ""; categoryFilter = null; activeFilter = TxFilter.ALL }) {
-                                        Text("Clear filters")
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
+            // Recent transaction rows
+            if (recentTransactions.isEmpty()) {
+                item { EmptyStateCard() }
             } else {
-                items(filtered, key = { it.id }) { transaction ->
+                items(recentTransactions, key = { it.id }) { transaction ->
                     TransactionRow(
                         transaction = transaction,
                         currencyCode = appData.currencyCode,
@@ -289,9 +196,27 @@ fun HomeScreen(
                         onEdit = { transactionToEdit = transaction },
                         onDelete = {
                             deletingId = transaction.id
-                            onDeleteTransaction(transaction.id)
+                            onDeleteTransaction(transaction.id) { deletingId = null }
                         }
                     )
+                }
+            }
+
+            // "View All Transactions" button — only shown when total > 5
+            if (hasMore) {
+                item {
+                    Button(
+                        onClick = onViewAllTransactions,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(14.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2563EB))
+                    ) {
+                        Text(
+                            "View All Transactions  →",
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                    }
                 }
             }
         }
@@ -302,10 +227,14 @@ fun HomeScreen(
             transaction = transactionToEdit!!,
             profile = activeProfile,
             currencyCode = appData.currencyCode,
-            onDismiss = { transactionToEdit = null },
+            isSaving = isEditSaving,
+            onDismiss = { if (!isEditSaving) transactionToEdit = null },
             onSave = { updatedTransaction ->
-                onUpdateTransaction(updatedTransaction)
-                transactionToEdit = null
+                isEditSaving = true
+                onUpdateTransaction(updatedTransaction) {
+                    isEditSaving = false
+                    transactionToEdit = null
+                }
             }
         )
     }
@@ -315,8 +244,12 @@ fun HomeScreen(
 
 @Composable
 fun BalanceSummaryCard(profile: ExpenseProfile, currencyCode: String) {
-    val totalExpense = profile.transactions.filter { it.type == TransactionType.EXPENSE }.sumOf { it.getConvertedAmount(currencyCode) }
-    val totalIncome = profile.transactions.filter { it.type == TransactionType.INCOME }.sumOf { it.getConvertedAmount(currencyCode) }
+    val totalExpense = remember(profile.transactions, currencyCode) {
+        profile.transactions.filter { it.type == TransactionType.EXPENSE }.sumOf { it.getConvertedAmount(currencyCode) }
+    }
+    val totalIncome = remember(profile.transactions, currencyCode) {
+        profile.transactions.filter { it.type == TransactionType.INCOME }.sumOf { it.getConvertedAmount(currencyCode) }
+    }
     val balance = totalIncome - totalExpense
 
     ElevatedCard(
@@ -348,6 +281,7 @@ fun EditTransactionDialog(
     transaction: MoneyTransaction,
     profile: ExpenseProfile,
     currencyCode: String,
+    isSaving: Boolean = false,
     onDismiss: () -> Unit,
     onSave: (MoneyTransaction) -> Unit
 ) {
@@ -360,7 +294,7 @@ fun EditTransactionDialog(
     var categoryMenuExpanded by remember { mutableStateOf(false) }
 
     AlertDialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = { if (!isSaving) onDismiss() },
         title = { Text("Edit Transaction") },
         text = {
             LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -422,21 +356,34 @@ fun EditTransactionDialog(
             }
         },
         confirmButton = {
-            Button(onClick = {
-                val amount = amountText.toDoubleOrNull()
-                val parsedDate = com.example.expensetracker.utils.parseDateStart(dateText)
-                if (amount != null && amount > 0 && parsedDate != null) {
-                    onSave(
-                        transaction.copy(
-                            type = type,
-                            title = title.ifBlank { if (type == TransactionType.EXPENSE) "Expense" else "Income" },
-                            category = if (type == TransactionType.INCOME) "Income" else categoryText.ifBlank { "Other" },
-                            amount = amount, dateMillis = parsedDate, note = note
+            Button(
+                onClick = {
+                    val amount = amountText.toDoubleOrNull()
+                    val parsedDate = com.example.expensetracker.utils.parseDateStart(dateText)
+                    if (amount != null && amount > 0 && parsedDate != null) {
+                        onSave(
+                            transaction.copy(
+                                type = type,
+                                title = title.ifBlank { if (type == TransactionType.EXPENSE) "Expense" else "Income" },
+                                category = if (type == TransactionType.INCOME) "Income" else categoryText.ifBlank { "Other" },
+                                amount = amount, dateMillis = parsedDate, note = note
+                            )
                         )
+                    }
+                },
+                enabled = !isSaving
+            ) {
+                if (isSaving) {
+                    androidx.compose.material3.CircularProgressIndicator(
+                        modifier = Modifier.size(16.dp), color = Color.White, strokeWidth = 2.dp
                     )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Updating...")
+                } else {
+                    Text("Save")
                 }
-            }) { Text("Save") }
+            }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
+        dismissButton = { TextButton(onClick = onDismiss, enabled = !isSaving) { Text("Cancel") } }
     )
 }

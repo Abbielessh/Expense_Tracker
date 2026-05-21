@@ -6,8 +6,16 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.CircularProgressIndicator
@@ -18,6 +26,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -47,6 +56,7 @@ import com.example.expensetracker.model.RecurringTransaction
 import com.example.expensetracker.model.TransactionType
 import com.example.expensetracker.notifications.ReminderScheduler
 import com.example.expensetracker.ui.screens.AddTransactionScreen
+import com.example.expensetracker.ui.screens.AllTransactionsScreen
 import com.example.expensetracker.ui.screens.BudgetScreen
 import com.example.expensetracker.ui.screens.HomeScreen
 import com.example.expensetracker.ui.screens.LoginScreen
@@ -58,6 +68,8 @@ import com.example.expensetracker.ui.screens.SignupScreen
 import com.example.expensetracker.ui.theme.ExpenseTrackerTheme
 import com.example.expensetracker.utils.NetworkUtils
 import com.example.expensetracker.utils.createExpensePdf
+import com.example.expensetracker.utils.PdfSplitType
+import com.example.expensetracker.utils.DisplayRefreshRateUtils
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.handleDeeplinks
 import kotlinx.coroutines.launch
@@ -99,17 +111,46 @@ class MainActivity : ComponentActivity() {
             _emailConfirmed.value = true
         }
 
+        // Apply saved display refresh rate preference immediately
+        DisplayRefreshRateUtils.applyRefreshRate(
+            this,
+            DisplayRefreshRateUtils.loadSavedMode(this),
+            DisplayRefreshRateUtils.loadSavedHz(this)
+        )
+
         setContent {
             ExpenseTrackerTheme {
                 val context = LocalContext.current
                 val store = remember { ExpenseStore(context) }
                 val repository = remember { SupabaseRepository() }
                 
-                var isLoggedIn by remember { mutableStateOf(repository.isUserLoggedIn()) }
+                var isLoggedIn by remember { mutableStateOf<Boolean?>(null) }  // null = checking session
                 var emailConfirmed by remember { _emailConfirmed }
                 var appData by remember { mutableStateOf<ExpenseAppData?>(null) }
                 val scope = rememberCoroutineScope()
                 val snackbarHostState = remember { SnackbarHostState() }
+
+                // On first launch check for an existing session.
+                // hasStoredSession() reads SharedPreferences directly — it is a fast,
+                // offline check that works even before the Auth plugin has loaded the
+                // session into memory asynchronously.
+                LaunchedEffect(Unit) {
+                    val hasStored = SupabaseClientProvider.hasStoredSession(context)
+                    val loggedIn = when {
+                        // Fast-path: session already loaded in memory
+                        repository.isUserLoggedIn() -> true
+                        // Session exists in storage — try to refresh the access token
+                        hasStored -> {
+                            val refreshed = try { repository.refreshSession() } catch (_: Exception) { false }
+                            // If refresh failed (e.g. network error) keep the user logged in;
+                            // fetchAppData() will fall back to local cache on failure.
+                            refreshed || repository.isUserLoggedIn()
+                        }
+                        // Truly no stored session
+                        else -> false
+                    }
+                    isLoggedIn = loggedIn
+                }
 
                 // When email is confirmed via deep link, refresh session & show banner
                 LaunchedEffect(emailConfirmed) {
@@ -124,13 +165,13 @@ class MainActivity : ComponentActivity() {
                 }
 
                 LaunchedEffect(isLoggedIn) {
-                    if (isLoggedIn) {
+                    if (isLoggedIn == true) {
                         try {
                             appData = repository.fetchAppData()
                         } catch (e: Exception) {
                             appData = store.load()
                         }
-                    } else {
+                    } else if (isLoggedIn == false) {
                         appData = null
                     }
                 }
@@ -140,7 +181,7 @@ class MainActivity : ComponentActivity() {
                     store.save(newData)   // local cache only — Supabase ops are done individually
                 }
 
-                val onExportPdf = {
+                val onExportPdf: (PdfSplitType) -> Unit = { splitType ->
                     appData?.let { data ->
                         val activeProfile = data.profiles[
                             data.activeProfileIndex.coerceIn(0, data.profiles.lastIndex)
@@ -149,7 +190,8 @@ class MainActivity : ComponentActivity() {
                         val pdfBytes = createExpensePdf(
                             context = context,
                             appData = data,
-                            profile = activeProfile
+                            profile = activeProfile,
+                            splitType = splitType
                         )
 
                         pendingPdfBytes = pdfBytes
@@ -201,7 +243,16 @@ class MainActivity : ComponentActivity() {
                     }
                 ) { innerPad ->
                     Box(modifier = Modifier.padding(innerPad)) {
-                        if (!isLoggedIn) {
+                        if (isLoggedIn == null) {
+                            // Session check in progress — show "Checking session..."
+                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    CircularProgressIndicator()
+                                    Spacer(modifier = Modifier.height(12.dp))
+                                    Text("Checking session...", color = Color(0xFF667085))
+                                }
+                            }
+                        } else if (isLoggedIn == false) {
                             var showSignup by remember { mutableStateOf(false) }
                             if (showSignup) {
                                 SignupScreen(
@@ -224,9 +275,12 @@ class MainActivity : ComponentActivity() {
                             ExpenseAppNavigation(
                                 appData = appData!!,
                                 onDataChange = { updateData(it) },
-                                onExportPdf = { onExportPdf() },
+                                onExportPdf = onExportPdf,
                                 onExportCsv = { onExportCsv() },
                                 repository = repository,
+                                onApplyRefreshRate = { mode, hz ->
+                                    DisplayRefreshRateUtils.applyRefreshRate(this@MainActivity, mode, hz)
+                                },
                                 onLogout = {
                                     scope.launch {
                                         repository.logout()
@@ -260,15 +314,17 @@ sealed class Screen(val route: String, val title: String, val iconResId: Int) {
     object Settings : Screen("settings", "Settings", R.drawable.ic_nav_settings)
     object Budget : Screen("budget", "Budget", R.drawable.ic_nav_settings)  // reuses settings icon
     object Recurring : Screen("recurring", "Recurring", R.drawable.ic_nav_settings) // reuses settings icon
+    object AllTransactions : Screen("all_transactions", "All Transactions", R.drawable.ic_nav_home) // no nav bar entry
 }
 
 @Composable
 fun ExpenseAppNavigation(
     appData: ExpenseAppData,
     onDataChange: (ExpenseAppData) -> Unit,
-    onExportPdf: () -> Unit,
+    onExportPdf: (PdfSplitType) -> Unit,
     onExportCsv: () -> Unit,
     repository: SupabaseRepository,
+    onApplyRefreshRate: (mode: String, hz: Float) -> Unit = { _, _ -> },
     onLogout: () -> Unit
 ) {
     val navController = rememberNavController()
@@ -357,36 +413,55 @@ fun ExpenseAppNavigation(
                 )
             }
         },
+        // contentWindowInsets=0: the outer Scaffold (MainActivity) already consumed
+        // the full systemBars insets via its default contentWindowInsets.  Its innerPad
+        // shrinks our available area: top=statusBar, bottom=navBar.  Adding the same
+        // insets again here would double-pad top and bottom, creating the large gaps.
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         bottomBar = {
-            NavigationBar(containerColor = Color.White) {
-                val navBackStackEntry by navController.currentBackStackEntryAsState()
-                val currentDestination = navBackStackEntry?.destination
-                items.forEach { screen ->
-                    NavigationBarItem(
-                        icon = {
-                            androidx.compose.foundation.Image(
-                                painter = androidx.compose.ui.res.painterResource(id = screen.iconResId),
-                                contentDescription = screen.title,
-                                modifier = Modifier.size(26.dp)
+            // 64 dp white surface — no extra spacer needed.  The outer Scaffold's
+            // innerPad already places us above the Android system nav buttons.
+            Surface(
+                color = Color.White,
+                shadowElevation = 8.dp,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Box(modifier = Modifier.fillMaxWidth().height(64.dp)) {
+                    NavigationBar(
+                        containerColor = Color.Transparent,
+                        tonalElevation = 0.dp,
+                        windowInsets = WindowInsets(0, 0, 0, 0)
+                    ) {
+                        val navBackStackEntry by navController.currentBackStackEntryAsState()
+                        val currentDestination = navBackStackEntry?.destination
+                        items.forEach { screen ->
+                            NavigationBarItem(
+                                icon = {
+                                    androidx.compose.foundation.Image(
+                                        painter = androidx.compose.ui.res.painterResource(id = screen.iconResId),
+                                        contentDescription = screen.title,
+                                        modifier = Modifier.size(22.dp)
+                                    )
+                                },
+                                label = { Text(screen.title) },
+                                selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true,
+                                colors = NavigationBarItemDefaults.colors(
+                                    selectedIconColor = Color.White,
+                                    selectedTextColor = Color(0xFF2563EB),
+                                    indicatorColor = Color(0xFFEAF2FF),
+                                    unselectedIconColor = Color.Gray,
+                                    unselectedTextColor = Color(0xFF667085)
+                                ),
+                                onClick = {
+                                    navController.navigate(screen.route) {
+                                        popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                                        launchSingleTop = true
+                                        restoreState = true
+                                    }
+                                }
                             )
-                        },
-                        label = { Text(screen.title) },
-                        selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true,
-                        colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = Color.White,
-                            selectedTextColor = Color(0xFF2563EB),
-                            indicatorColor = Color(0xFFEAF2FF),
-                            unselectedIconColor = Color.Gray,
-                            unselectedTextColor = Color(0xFF667085)
-                        ),
-                        onClick = {
-                            navController.navigate(screen.route) {
-                                popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                                launchSingleTop = true
-                                restoreState = true
-                            }
                         }
-                    )
+                    }
                 }
             }
         }
@@ -394,7 +469,11 @@ fun ExpenseAppNavigation(
         NavHost(
             navController = navController,
             startDestination = Screen.Home.route,
-            modifier = Modifier.padding(innerPadding)
+            modifier = Modifier.padding(innerPadding),
+            enterTransition = { fadeIn(animationSpec = tween(durationMillis = 200)) },
+            exitTransition = { fadeOut(animationSpec = tween(durationMillis = 200)) },
+            popEnterTransition = { fadeIn(animationSpec = tween(durationMillis = 200)) },
+            popExitTransition = { fadeOut(animationSpec = tween(durationMillis = 200)) }
         ) {
             // ── Home ──────────────────────────────────────────────────────────
             composable(Screen.Home.route) {
@@ -402,7 +481,10 @@ fun ExpenseAppNavigation(
                     appData = appData,
                     activeProfile = activeProfile,
                     recurringList = recurringList,
-                    onUpdateTransaction = { updatedTx ->
+                    onViewAllTransactions = {
+                        navController.navigate(Screen.AllTransactions.route)
+                    },
+                    onUpdateTransaction = { updatedTx, onDone ->
                         scope.launch {
                             try {
                                 repository.updateTransaction(updatedTx)
@@ -417,10 +499,12 @@ fun ExpenseAppNavigation(
                             } catch (e: Exception) {
                                 android.util.Log.e("ExpenseSupabase", "updateTransaction failed", e)
                                 showError("Failed to update transaction: ${e.message}")
+                            } finally {
+                                onDone()
                             }
                         }
                     },
-                    onDeleteTransaction = { transactionId ->
+                    onDeleteTransaction = { transactionId, onDone ->
                         scope.launch {
                             try {
                                 repository.deleteTransaction(transactionId)
@@ -433,6 +517,8 @@ fun ExpenseAppNavigation(
                             } catch (e: Exception) {
                                 android.util.Log.e("ExpenseSupabase", "deleteTransaction failed", e)
                                 showError("Failed to delete transaction: ${e.message}")
+                            } finally {
+                                onDone()
                             }
                         }
                     }
@@ -444,8 +530,11 @@ fun ExpenseAppNavigation(
                 AddTransactionScreen(
                     profile = activeProfile,
                     currencyCode = appData.currencyCode,
-                    onAddTransaction = { transaction ->
-                        requireOnline {
+                    onAddTransaction = { transaction, onDone ->
+                        if (!NetworkUtils.isOnline(context)) {
+                            showError("No internet connection. Please try again when online.")
+                            onDone()
+                        } else {
                             scope.launch {
                                 try {
                                     val savedTx = repository.insertTransaction(transaction, activeProfile.id)
@@ -454,9 +543,11 @@ fun ExpenseAppNavigation(
                                     updatedProfiles[activeProfileIndex] = updatedProfile
                                     onDataChange(appData.copy(profiles = updatedProfiles))
                                     navController.navigate(Screen.Home.route) { popUpTo(Screen.Home.route) { inclusive = true } }
+                                    onDone()
                                 } catch (e: Exception) {
                                     android.util.Log.e("ExpenseSupabase", "insertTransaction failed", e)
                                     showError("Failed to save: ${NetworkUtils.classifyError(e)}")
+                                    onDone()
                                 }
                             }
                         }
@@ -596,6 +687,7 @@ fun ExpenseAppNavigation(
                     onLogout = onLogout,
                     onNavigateToBudgets = { navController.navigate(Screen.Budget.route) },
                     onNavigateToRecurring = { navController.navigate(Screen.Recurring.route) },
+                    onApplyRefreshRate = onApplyRefreshRate,
                     repository = repository
                 )
             }
@@ -689,6 +781,52 @@ fun ExpenseAppNavigation(
                             }
                         }
                     }
+                )
+            }
+
+            // ── All Transactions ──────────────────────────────────────────────
+            composable(Screen.AllTransactions.route) {
+                AllTransactionsScreen(
+                    appData = appData,
+                    activeProfile = activeProfile,
+                    onUpdateTransaction = { updatedTx, onDone ->
+                        scope.launch {
+                            try {
+                                repository.updateTransaction(updatedTx)
+                                val updatedTransactions = activeProfile.transactions.map {
+                                    if (it.id == updatedTx.id) updatedTx else it
+                                }
+                                val updatedProfile = activeProfile.copy(transactions = updatedTransactions)
+                                val updatedProfiles = appData.profiles.toMutableList()
+                                updatedProfiles[activeProfileIndex] = updatedProfile
+                                onDataChange(appData.copy(profiles = updatedProfiles))
+                            } catch (e: Exception) {
+                                android.util.Log.e("ExpenseSupabase", "updateTransaction failed", e)
+                                showError("Failed to update transaction: ${e.message}")
+                            } finally {
+                                onDone()
+                            }
+                        }
+                    },
+                    onDeleteTransaction = { transactionId, onDone ->
+                        scope.launch {
+                            try {
+                                repository.deleteTransaction(transactionId)
+                                val updatedProfile = activeProfile.copy(
+                                    transactions = activeProfile.transactions.filterNot { it.id == transactionId }
+                                )
+                                val updatedProfiles = appData.profiles.toMutableList()
+                                updatedProfiles[activeProfileIndex] = updatedProfile
+                                onDataChange(appData.copy(profiles = updatedProfiles))
+                            } catch (e: Exception) {
+                                android.util.Log.e("ExpenseSupabase", "deleteTransaction failed", e)
+                                showError("Failed to delete transaction: ${e.message}")
+                            } finally {
+                                onDone()
+                            }
+                        }
+                    },
+                    onBack = { navController.popBackStack() }
                 )
             }
         }

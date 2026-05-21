@@ -17,7 +17,9 @@ object CategoryIconUtils {
         "entertainment" to "🎬",
         "fuel"          to "⛽",
         "income"        to "💰",
-        "other"         to "📌"
+        "other"         to "📌",
+        "zepto"         to "🛒",
+        "personal"      to "👤"
     )
 
     /** Best-effort guess of icon_key from a category display name */
@@ -77,7 +79,13 @@ object CategoryIconUtils {
         "gas"           to "fuel",
         "income"        to "income",
         "salary"        to "income",
-        "freelance"     to "income"
+        "freelance"     to "income",
+        "zepto"         to "zepto",
+        "personal"      to "personal",
+        "grooming"      to "personal",
+        "haircut"       to "personal",
+        "salon"         to "personal",
+        "spa"           to "personal"
     )
 
     val allIconKeys: List<String> = iconKeyToEmoji.keys.toList()

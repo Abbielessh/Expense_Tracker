@@ -58,34 +58,64 @@ fun ReportsScreen(
     var categoryMenuExpanded by remember { mutableStateOf(false) }
     var startDateText by rememberSaveable { mutableStateOf(formatDate(monthStartMillis())) }
     var endDateText by rememberSaveable { mutableStateOf(formatDate(System.currentTimeMillis())) }
+    // Hoisted so graph calculations can use it in remember() keys
+    var selectedGraphRange by rememberSaveable { mutableStateOf("Month") }
 
-    val reportCategories = listOf("All") + profile.categories
+    val reportCategories = remember(profile.categories) { listOf("All") + profile.categories }
 
-    val expenseTransactions = profile.transactions.filter {
-        it.type == TransactionType.EXPENSE &&
-                (selectedCategory == "All" || it.category == selectedCategory)
+    // Period boundaries — computed once per session (stable within a session)
+    val todayStart = remember { todayStartMillis() }
+    val todayEnd = remember(todayStart) { endOfDayMillis(todayStart) }
+    val weekStart = remember { weekStartMillis() }
+    val weekEnd = remember { endOfDayMillis(System.currentTimeMillis()) }
+    val monthStart = remember { monthStartMillis() }
+    val monthEnd = remember { endOfDayMillis(System.currentTimeMillis()) }
+
+    val customStart = remember(startDateText) { parseDateStart(startDateText) }
+    val customEnd = remember(endDateText) { parseDateEnd(endDateText) }
+
+    val expenseTransactions = remember(profile.transactions, selectedCategory) {
+        profile.transactions.filter {
+            it.type == TransactionType.EXPENSE &&
+                    (selectedCategory == "All" || it.category == selectedCategory)
+        }
     }
 
-    val todayStart = todayStartMillis()
-    val todayEnd = endOfDayMillis(todayStart)
+    val dailyTotal = remember(expenseTransactions, currencyCode) { sumBetween(expenseTransactions, todayStart, todayEnd, currencyCode) }
+    val weeklyTotal = remember(expenseTransactions, currencyCode) { sumBetween(expenseTransactions, weekStart, weekEnd, currencyCode) }
+    val monthlyTotal = remember(expenseTransactions, currencyCode) { sumBetween(expenseTransactions, monthStart, monthEnd, currencyCode) }
 
-    val weekStart = weekStartMillis()
-    val weekEnd = endOfDayMillis(System.currentTimeMillis())
+    val customTotal = remember(expenseTransactions, currencyCode, customStart, customEnd) {
+        if (customStart != null && customEnd != null) {
+            sumBetween(expenseTransactions, customStart, customEnd, currencyCode)
+        } else {
+            0.0
+        }
+    }
 
-    val monthStart = monthStartMillis()
-    val monthEnd = endOfDayMillis(System.currentTimeMillis())
-
-    val customStart = parseDateStart(startDateText)
-    val customEnd = parseDateEnd(endDateText)
-
-    val dailyTotal = sumBetween(expenseTransactions, todayStart, todayEnd, currencyCode)
-    val weeklyTotal = sumBetween(expenseTransactions, weekStart, weekEnd, currencyCode)
-    val monthlyTotal = sumBetween(expenseTransactions, monthStart, monthEnd, currencyCode)
-
-    val customTotal = if (customStart != null && customEnd != null) {
-        sumBetween(expenseTransactions, customStart, customEnd, currencyCode)
-    } else {
-        0.0
+    // Graph computations — only recalculated when range/transactions/currency changes
+    val graphTransactions = remember(profile.transactions) {
+        profile.transactions.filter { it.type == TransactionType.EXPENSE }
+    }
+    val filteredForGraph = remember(graphTransactions, selectedGraphRange, todayStart, todayEnd, weekStart, weekEnd, monthStart, monthEnd, customStart, customEnd) {
+        when (selectedGraphRange) {
+            "Today" -> graphTransactions.filter { it.dateMillis in todayStart..todayEnd }
+            "Week"  -> graphTransactions.filter { it.dateMillis in weekStart..weekEnd }
+            "Month" -> graphTransactions.filter { it.dateMillis in monthStart..monthEnd }
+            "Custom" -> if (customStart != null && customEnd != null)
+                graphTransactions.filter { it.dateMillis in customStart..customEnd }
+            else emptyList()
+            else -> emptyList()
+        }
+    }
+    val categoryTotals = remember(filteredForGraph, currencyCode) {
+        filteredForGraph
+            .groupBy { it.category }
+            .mapValues { entry -> entry.value.sumOf { it.getConvertedAmount(currencyCode) } }
+            .filterValues { it > 0.0 }
+            .toList()
+            .sortedByDescending { it.second }
+            .toMap()
     }
 
     Box(
@@ -105,7 +135,7 @@ fun ReportsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(horizontal = 16.dp),
-            contentPadding = PaddingValues(top = 16.dp, bottom = 100.dp)
+            contentPadding = PaddingValues(top = 16.dp, bottom = 80.dp)
         ) {
             item {
                 ElevatedCard(
@@ -226,12 +256,12 @@ fun ReportsScreen(
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Bold
                         )
-                        
+
                         Spacer(modifier = Modifier.height(12.dp))
-                        
-                        var selectedGraphRange by rememberSaveable { mutableStateOf("Month") }
+
+                        // selectedGraphRange is hoisted to function level for remember() keys
                         val ranges = listOf("Today", "Week", "Month", "Custom")
-                        
+
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -245,31 +275,10 @@ fun ReportsScreen(
                                 )
                             }
                         }
-                        
+
                         Spacer(modifier = Modifier.height(16.dp))
-                        
-                        val graphTransactions = profile.transactions.filter { it.type == TransactionType.EXPENSE }
-                        
-                        val filteredForGraph = when (selectedGraphRange) {
-                            "Today" -> graphTransactions.filter { it.dateMillis in todayStart..todayEnd }
-                            "Week" -> graphTransactions.filter { it.dateMillis in weekStart..weekEnd }
-                            "Month" -> graphTransactions.filter { it.dateMillis in monthStart..monthEnd }
-                            "Custom" -> {
-                                if (customStart != null && customEnd != null) {
-                                    graphTransactions.filter { it.dateMillis in customStart..customEnd }
-                                } else emptyList()
-                            }
-                            else -> emptyList()
-                        }
-                        
-                        val categoryTotals = filteredForGraph
-                            .groupBy { it.category }
-                            .mapValues { entry -> entry.value.sumOf { it.getConvertedAmount(currencyCode) } }
-                            .filterValues { it > 0.0 }
-                            .toList()
-                            .sortedByDescending { it.second }
-                            .toMap()
-                            
+
+                        // categoryTotals is pre-computed at function level using remember()
                         ExpensePieChart(categoryTotals = categoryTotals, currencyCode = currencyCode)
                     }
                 }

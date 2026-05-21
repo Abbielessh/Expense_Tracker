@@ -8,6 +8,19 @@ fun formatDate(millis: Long): String {
     return SimpleDateFormat("yyyy-MM-dd", Locale.US).format(millis)
 }
 
+/** Display-only format: dd/MM/yyyy (e.g. 18/05/2026). Internal storage still uses yyyy-MM-dd. */
+fun formatDisplayDate(millis: Long): String {
+    return SimpleDateFormat("dd/MM/yyyy", Locale.US).format(millis)
+}
+
+/** Convert a stored yyyy-MM-dd string to display format dd/MM/yyyy. */
+fun formatDisplayDateStr(dateStr: String): String {
+    return try {
+        val d = SimpleDateFormat("yyyy-MM-dd", Locale.US).parse(dateStr) ?: return dateStr
+        SimpleDateFormat("dd/MM/yyyy", Locale.US).format(d)
+    } catch (_: Exception) { dateStr }
+}
+
 fun parseDateStart(dateText: String): Long? {
     return try {
         val formatter = SimpleDateFormat("yyyy-MM-dd", Locale.US)
