@@ -1,5 +1,6 @@
 package com.example.expensetracker.ui.components
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -29,11 +30,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.expensetracker.model.MoneyTransaction
 import com.example.expensetracker.model.TransactionType
+import com.example.expensetracker.ui.theme.AppColors
+import com.example.expensetracker.ui.theme.AppStyles
 import com.example.expensetracker.utils.CategoryIconUtils
 import com.example.expensetracker.utils.formatDisplayDate
 import com.example.expensetracker.utils.formatMoney
@@ -47,17 +52,17 @@ fun SummaryMiniCard(
 ) {
     ElevatedCard(
         modifier = modifier,
-        shape = RoundedCornerShape(18.dp),
+        shape = RoundedCornerShape(AppStyles.CardCornerRadius),
         colors = CardDefaults.elevatedCardColors(
-            containerColor = Color(0xFFF7FAFF)
+            containerColor = AppColors.CardBackground
         ),
-        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.elevatedCardElevation(defaultElevation = AppStyles.CardElevation)
     ) {
-        Column(modifier = Modifier.padding(14.dp)) {
+        Column(modifier = Modifier.padding(AppStyles.PaddingStandard)) {
             Text(
                 text = title,
                 fontSize = 13.sp,
-                color = Color(0xFF667085)
+                color = AppColors.SecondaryText
             )
 
             Spacer(modifier = Modifier.height(4.dp))
@@ -83,31 +88,34 @@ fun TransactionRow(
     val isExpense = transaction.type == TransactionType.EXPENSE
     var showDeleteDialog by rememberSaveable { mutableStateOf(false) }
 
-    // Determine emoji icon from category name (iconKey not stored in MoneyTransaction,
-    // so we guess from the category name)
-    val categoryIcon = CategoryIconUtils.iconForCategory(transaction.category, null)
+    // Determine drawable resource from category name
+    val categoryIconRes = CategoryIconUtils.iconResForCategory(transaction.category, null)
 
     ElevatedCard(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.elevatedCardColors(containerColor = Color.White),
-        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)
+        shape = RoundedCornerShape(AppStyles.CardCornerRadius),
+        colors = CardDefaults.elevatedCardColors(containerColor = AppColors.CardBackground),
+        elevation = CardDefaults.elevatedCardElevation(defaultElevation = AppStyles.CardElevation)
     ) {
-        Column(modifier = Modifier.padding(14.dp)) {
+        Column(modifier = Modifier.padding(AppStyles.PaddingStandard)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                // Category icon
-                Text(
-                    text = categoryIcon,
-                    fontSize = 28.sp,
-                    modifier = Modifier.padding(end = 10.dp)
+                // Category image icon (24dp)
+                Image(
+                    painter = painterResource(id = categoryIconRes),
+                    contentDescription = transaction.category,
+                    modifier = Modifier
+                        .size(28.dp)
+                        .padding(end = 2.dp),
+                    contentScale = ContentScale.Fit
                 )
+                Spacer(modifier = Modifier.width(10.dp))
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(transaction.title, fontSize = 17.sp, fontWeight = FontWeight.Bold, color = Color(0xFF101828))
+                    Text(transaction.title, fontSize = 17.sp, fontWeight = FontWeight.Bold, color = AppColors.PrimaryText)
                     Spacer(modifier = Modifier.height(3.dp))
-                    Text("${transaction.category} • ${formatDisplayDate(transaction.dateMillis)}", fontSize = 13.sp, color = Color(0xFF667085))
+                    Text("${transaction.category} • ${formatDisplayDate(transaction.dateMillis)}", fontSize = 13.sp, color = AppColors.SecondaryText)
                     if (transaction.note.isNotBlank()) {
                         Spacer(modifier = Modifier.height(3.dp))
-                        Text(transaction.note, fontSize = 12.sp, color = Color(0xFF98A2B3))
+                        Text(transaction.note, fontSize = 12.sp, color = AppColors.SecondaryText)
                     }
                 }
                 Column(horizontalAlignment = Alignment.End) {
@@ -115,7 +123,7 @@ fun TransactionRow(
                         text = if (isExpense) "- ${formatMoney(transaction.amount, currencyCode)}"
                                else "+ ${formatMoney(transaction.amount, currencyCode)}",
                         fontSize = 16.sp, fontWeight = FontWeight.Bold,
-                        color = if (isExpense) Color(0xFFDC2626) else Color(0xFF059669)
+                        color = if (isExpense) AppColors.ExpenseError else AppColors.SuccessIncome
                     )
                 }
             }
@@ -125,17 +133,17 @@ fun TransactionRow(
                 androidx.compose.material3.OutlinedButton(
                     onClick = onEdit,
                     enabled = !isDeleting,
-                    colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF2563EB))
+                    colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(contentColor = AppColors.PrimaryAccent)
                 ) { Text("Edit") }
                 Spacer(modifier = Modifier.width(8.dp))
                 androidx.compose.material3.OutlinedButton(
                     onClick = { if (!isDeleting) showDeleteDialog = true },
                     enabled = !isDeleting,
-                    colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFDC2626))
+                    colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(contentColor = AppColors.ExpenseError)
                 ) {
                     if (isDeleting) {
                         androidx.compose.material3.CircularProgressIndicator(
-                            modifier = Modifier.size(14.dp), color = Color(0xFFDC2626), strokeWidth = 2.dp
+                            modifier = Modifier.size(14.dp), color = AppColors.ExpenseError, strokeWidth = 2.dp
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text("Deleting...")
@@ -155,7 +163,7 @@ fun TransactionRow(
             confirmButton = {
                 Button(
                     onClick = { onDelete(); showDeleteDialog = false },
-                    colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = Color(0xFFDC2626))
+                    colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = AppColors.ExpenseError)
                 ) { Text("Delete") }
             },
             dismissButton = { TextButton(onClick = { showDeleteDialog = false }) { Text("Cancel") } }
@@ -167,12 +175,12 @@ fun TransactionRow(
 fun EmptyStateCard() {
     ElevatedCard(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(22.dp),
-        colors = CardDefaults.elevatedCardColors(containerColor = Color.White),
-        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 3.dp)
+        shape = RoundedCornerShape(AppStyles.CardCornerRadius),
+        colors = CardDefaults.elevatedCardColors(containerColor = AppColors.CardBackground),
+        elevation = CardDefaults.elevatedCardElevation(defaultElevation = AppStyles.CardElevation)
     ) {
         Column(
-            modifier = Modifier.padding(22.dp),
+            modifier = Modifier.padding(AppStyles.PaddingStandard),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
@@ -186,7 +194,7 @@ fun EmptyStateCard() {
             Text(
                 text = "Add your first expense or income entry.",
                 fontSize = 14.sp,
-                color = Color(0xFF667085)
+                color = AppColors.SecondaryText
             )
         }
     }
@@ -216,7 +224,7 @@ fun CurrencyDialog(
                 Text(
                     text = "Choose common currency or type any currency code.",
                     fontSize = 14.sp,
-                    color = Color(0xFF667085)
+                    color = AppColors.SecondaryText
                 )
 
                 Spacer(modifier = Modifier.height(12.dp))
@@ -264,7 +272,7 @@ fun CurrencyDialog(
 }
 
 /**
- * Enhanced AddCategoryDialog with icon picker.
+ * Enhanced AddCategoryDialog with image-based icon picker.
  * Returns both name and selected icon_key via onAdd callback.
  */
 @OptIn(ExperimentalLayoutApi::class)
@@ -296,7 +304,7 @@ fun AddCategoryDialog(
                 )
 
                 Spacer(modifier = Modifier.height(12.dp))
-                Text("Select Icon", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFF344054))
+                Text("Select Icon", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = AppColors.PrimaryText)
                 Spacer(modifier = Modifier.height(8.dp))
 
                 FlowRow(
@@ -304,11 +312,24 @@ fun AddCategoryDialog(
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     CategoryIconUtils.allIconKeys.forEach { key ->
-                        val emoji = CategoryIconUtils.emojiForKey(key)
+                        val iconRes = CategoryIconUtils.drawableForKey(key)
                         FilterChip(
                             selected = selectedIconKey == key,
                             onClick = { selectedIconKey = key },
-                            label = { Text("$emoji $key", fontSize = 12.sp) }
+                            label = {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Image(
+                                        painter = painterResource(id = iconRes),
+                                        contentDescription = key,
+                                        modifier = Modifier.size(16.dp),
+                                        contentScale = ContentScale.Fit
+                                    )
+                                    Text(key, fontSize = 12.sp)
+                                }
+                            }
                         )
                     }
                 }

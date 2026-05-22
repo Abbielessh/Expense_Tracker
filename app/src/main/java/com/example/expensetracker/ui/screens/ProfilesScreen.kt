@@ -28,13 +28,14 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.expensetracker.model.ExpenseAppData
 import com.example.expensetracker.ui.components.AddProfileDialog
+import com.example.expensetracker.ui.theme.AppColors
+import com.example.expensetracker.ui.theme.AppStyles
 
 @Composable
 fun ProfilesScreen(
@@ -52,15 +53,7 @@ fun ProfilesScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(
-                Brush.verticalGradient(
-                    listOf(
-                        Color(0xFFEAF2FF),
-                        Color(0xFFF8FBFF),
-                        Color(0xFFFFFFFF)
-                    )
-                )
-            )
+            .background(AppColors.Background)
     ) {
         LazyColumn(
             modifier = Modifier
@@ -74,12 +67,12 @@ fun ProfilesScreen(
                     text = "Profiles",
                     fontSize = 28.sp,
                     fontWeight = FontWeight.ExtraBold,
-                    color = Color(0xFF101828)
+                    color = AppColors.PrimaryText
                 )
                 Text(
                     text = "Switch or add new profiles to track separate data",
                     fontSize = 14.sp,
-                    color = Color(0xFF667085)
+                    color = AppColors.SecondaryText
                 )
                 Spacer(modifier = Modifier.height(10.dp))
             }
@@ -92,12 +85,13 @@ fun ProfilesScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable { onProfileSelected(index) },
-                    shape = RoundedCornerShape(20.dp),
+                    shape = RoundedCornerShape(AppStyles.CardCornerRadius),
                     colors = CardDefaults.elevatedCardColors(
-                        containerColor = if (isActive) Color(0xFF2563EB) else Color.White
+                        // Active profile: primary teal bg; inactive: white
+                        containerColor = if (isActive) AppColors.Primary else AppColors.CardBackground
                     ),
                     elevation = CardDefaults.elevatedCardElevation(
-                        defaultElevation = if (isActive) 6.dp else 2.dp
+                        defaultElevation = if (isActive) 4.dp else AppStyles.CardElevation
                     )
                 ) {
                     Column(
@@ -111,13 +105,13 @@ fun ProfilesScreen(
                                     text = profile.name,
                                     fontSize = 18.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = if (isActive) Color.White else Color(0xFF101828)
+                                    color = if (isActive) Color.White else AppColors.PrimaryText
                                 )
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text(
                                     text = "${profile.transactions.size} transactions",
                                     fontSize = 14.sp,
-                                    color = if (isActive) Color(0xFFEAF2FF) else Color(0xFF667085)
+                                    color = if (isActive) AppColors.PrimarySoft else AppColors.SecondaryText
                                 )
                             }
                             if (isActive) {
@@ -139,7 +133,7 @@ fun ProfilesScreen(
                             androidx.compose.material3.OutlinedButton(
                                 onClick = { profileToEdit = index },
                                 colors = ButtonDefaults.outlinedButtonColors(
-                                    contentColor = if (isActive) Color.White else Color(0xFF2563EB)
+                                    contentColor = if (isActive) Color.White else AppColors.Primary
                                 )
                             ) {
                                 Text("Edit")
@@ -154,7 +148,7 @@ fun ProfilesScreen(
                                     }
                                 },
                                 colors = ButtonDefaults.outlinedButtonColors(
-                                    contentColor = if (isActive) Color(0xFFFFB4AB) else Color(0xFFDC2626)
+                                    contentColor = if (isActive) AppColors.ExpenseSoft else AppColors.ExpenseError
                                 )
                             ) {
                                 Text("Delete")
@@ -169,9 +163,9 @@ fun ProfilesScreen(
                 Button(
                     onClick = { showAddProfileDialog = true },
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(18.dp),
+                    shape = RoundedCornerShape(AppStyles.CardCornerRadius),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF2563EB),
+                        containerColor = AppColors.Primary,
                         contentColor = Color.White
                     )
                 ) {
@@ -218,7 +212,7 @@ fun ProfilesScreen(
                         onDeleteProfile(index)
                         profileToDelete = null
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFDC2626))
+                    colors = ButtonDefaults.buttonColors(containerColor = AppColors.ExpenseError)
                 ) {
                     Text("Delete")
                 }

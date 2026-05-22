@@ -1,5 +1,6 @@
 package com.example.expensetracker.ui.screens
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -31,12 +32,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.expensetracker.model.ExpenseProfile
 import com.example.expensetracker.model.TransactionType
 import com.example.expensetracker.ui.components.SummaryMiniCard
+import com.example.expensetracker.ui.theme.AppColors
+import com.example.expensetracker.ui.theme.AppStyles
 import com.example.expensetracker.utils.CategoryIconUtils
 import com.example.expensetracker.utils.endOfDayMillis
 import com.example.expensetracker.utils.formatDate
@@ -121,15 +126,7 @@ fun ReportsScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(
-                Brush.verticalGradient(
-                    listOf(
-                        Color(0xFFEAF2FF),
-                        Color(0xFFF8FBFF),
-                        Color(0xFFFFFFFF)
-                    )
-                )
-            )
+            .background(AppColors.Background)
     ) {
         LazyColumn(
             modifier = Modifier
@@ -140,9 +137,9 @@ fun ReportsScreen(
             item {
                 ElevatedCard(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(24.dp),
-                    colors = CardDefaults.elevatedCardColors(containerColor = Color.White),
-                    elevation = CardDefaults.elevatedCardElevation(defaultElevation = 5.dp)
+                    shape = RoundedCornerShape(AppStyles.CardCornerRadius),
+                    colors = CardDefaults.elevatedCardColors(containerColor = AppColors.CardBackground),
+                    elevation = CardDefaults.elevatedCardElevation(defaultElevation = AppStyles.CardElevation)
                 ) {
                     Column(modifier = Modifier.padding(18.dp)) {
                         Text(
@@ -183,14 +180,14 @@ fun ReportsScreen(
                             SummaryMiniCard(
                                 title = "Today",
                                 value = formatMoney(dailyTotal, currencyCode),
-                                color = Color(0xFFDC2626),
+                                color = AppColors.ExpenseError,
                                 modifier = Modifier.weight(1f)
                             )
 
                             SummaryMiniCard(
                                 title = "This Week",
                                 value = formatMoney(weeklyTotal, currencyCode),
-                                color = Color(0xFFEA580C),
+                                color = AppColors.Warning,
                                 modifier = Modifier.weight(1f)
                             )
                         }
@@ -200,7 +197,7 @@ fun ReportsScreen(
                         SummaryMiniCard(
                             title = "This Month",
                             value = formatMoney(monthlyTotal, currencyCode),
-                            color = Color(0xFF7C3AED),
+                            color = AppColors.Primary,
                             modifier = Modifier.fillMaxWidth()
                         )
 
@@ -235,7 +232,7 @@ fun ReportsScreen(
                         SummaryMiniCard(
                             title = "Selected Range Total",
                             value = formatMoney(customTotal, currencyCode),
-                            color = Color(0xFF2563EB),
+                            color = AppColors.Primary,
                             modifier = Modifier.fillMaxWidth()
                         )
                     }
@@ -246,9 +243,9 @@ fun ReportsScreen(
                 Spacer(modifier = Modifier.height(16.dp))
                 ElevatedCard(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(24.dp),
-                    colors = CardDefaults.elevatedCardColors(containerColor = Color.White),
-                    elevation = CardDefaults.elevatedCardElevation(defaultElevation = 5.dp)
+                    shape = RoundedCornerShape(AppStyles.CardCornerRadius),
+                    colors = CardDefaults.elevatedCardColors(containerColor = AppColors.CardBackground),
+                    elevation = CardDefaults.elevatedCardElevation(defaultElevation = AppStyles.CardElevation)
                 ) {
                     Column(modifier = Modifier.padding(18.dp)) {
                         Text(
@@ -271,7 +268,11 @@ fun ReportsScreen(
                                     selected = selectedGraphRange == range,
                                     onClick = { selectedGraphRange = range },
                                     label = { Text(range) },
-                                    modifier = Modifier.weight(1f)
+                                    modifier = Modifier.weight(1f),
+                                    colors = androidx.compose.material3.FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = AppColors.SelectedNavBackground,
+                                        selectedLabelColor = AppColors.SelectedNavIconText
+                                    )
                                 )
                             }
                         }
@@ -299,7 +300,7 @@ fun ExpensePieChart(
         ) {
             Text(
                 text = "No expense data available for graph.",
-                color = Color(0xFF98A2B3),
+                color = AppColors.SecondaryText,
                 fontSize = 14.sp
             )
         }
@@ -308,11 +309,7 @@ fun ExpensePieChart(
 
     val total = categoryTotals.values.sum()
     
-    val colors = listOf(
-        Color(0xFF2563EB), Color(0xFF10B981), Color(0xFFF59E0B), 
-        Color(0xFFEF4444), Color(0xFF8B5CF6), Color(0xFF14B8A6), 
-        Color(0xFFF43F5E), Color(0xFF6366F1), Color(0xFF84CC16)
-    )
+    val colors = AppColors.ChartColors
 
     Box(
         modifier = Modifier.fillMaxWidth().height(220.dp), 
@@ -340,12 +337,12 @@ fun ExpensePieChart(
         }
         
         Column(horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally) {
-            Text("Total", fontSize = 12.sp, color = Color(0xFF667085))
+            Text("Total", fontSize = 12.sp, color = AppColors.SecondaryText)
             Text(
                 text = formatMoney(total, currencyCode), 
                 fontWeight = FontWeight.Bold, 
                 fontSize = 16.sp,
-                color = Color(0xFF101828)
+                color = AppColors.PrimaryText
             )
         }
     }
@@ -357,7 +354,8 @@ fun ExpensePieChart(
         categoryTotals.forEach { (category, amount) ->
             val color = colors[index % colors.size]
             val percentage = (amount / total) * 100
-            
+            val catIconRes = CategoryIconUtils.iconResForCategory(category, null)
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
@@ -370,10 +368,17 @@ fun ExpensePieChart(
                             .background(color, androidx.compose.foundation.shape.CircleShape)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
+                    Image(
+                        painter = painterResource(id = catIconRes),
+                        contentDescription = category,
+                        modifier = Modifier.size(18.dp),
+                        contentScale = ContentScale.Fit
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = "${CategoryIconUtils.iconForCategory(category, null)}  $category",
+                        text = category,
                         fontSize = 14.sp,
-                        color = Color(0xFF344054)
+                        color = AppColors.PrimaryText
                     )
                 }
                 
@@ -381,7 +386,7 @@ fun ExpensePieChart(
                     text = "${formatMoney(amount, currencyCode)} (${String.format("%.1f", percentage)}%)", 
                     fontSize = 14.sp, 
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFF101828)
+                    color = AppColors.PrimaryText
                 )
             }
             index++

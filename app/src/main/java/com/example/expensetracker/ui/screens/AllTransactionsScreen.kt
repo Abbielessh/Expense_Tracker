@@ -1,5 +1,6 @@
 package com.example.expensetracker.ui.screens
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
@@ -14,6 +15,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -23,6 +26,8 @@ import com.example.expensetracker.model.MoneyTransaction
 import com.example.expensetracker.model.TransactionType
 import com.example.expensetracker.ui.components.EmptyStateCard
 import com.example.expensetracker.ui.components.TransactionRow
+import com.example.expensetracker.ui.theme.AppColors
+import com.example.expensetracker.ui.theme.AppStyles
 import com.example.expensetracker.utils.CategoryIconUtils
 import java.util.Calendar
 
@@ -102,7 +107,7 @@ fun AllTransactionsScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Brush.verticalGradient(listOf(Color(0xFFEAF2FF), Color(0xFFF8FBFF), Color(0xFFFFFFFF))))
+            .background(AppColors.Background)
     ) {
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
@@ -116,16 +121,16 @@ fun AllTransactionsScreen(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     IconButton(onClick = onBack) {
-                        Text("←", fontSize = 22.sp, color = Color(0xFF2563EB))
+                        Text("←", fontSize = 22.sp, color = AppColors.PrimaryAccent)
                     }
                     Spacer(modifier = Modifier.width(4.dp))
                     Column {
                         Text(
                             "All Transactions", fontSize = 22.sp,
-                            fontWeight = FontWeight.ExtraBold, color = Color(0xFF101828)
+                            fontWeight = FontWeight.ExtraBold, color = AppColors.PrimaryText
                         )
                         Text(
-                            activeProfile.name, fontSize = 13.sp, color = Color(0xFF667085)
+                            activeProfile.name, fontSize = 13.sp, color = AppColors.SecondaryText
                         )
                     }
                 }
@@ -141,8 +146,8 @@ fun AllTransactionsScreen(
                     shape = RoundedCornerShape(16.dp),
                     modifier = Modifier.fillMaxWidth(),
                     colors = OutlinedTextFieldDefaults.colors(
-                        unfocusedContainerColor = Color.White,
-                        focusedContainerColor = Color.White
+                        unfocusedContainerColor = AppColors.CardBackground,
+                        focusedContainerColor = AppColors.CardBackground
                     )
                 )
             }
@@ -158,19 +163,36 @@ fun AllTransactionsScreen(
                             selected = activeFilter == filter,
                             onClick = { activeFilter = filter },
                             label = { Text(filter.label, fontSize = 12.sp) },
-                            shape = RoundedCornerShape(10.dp)
+                            shape = RoundedCornerShape(10.dp),
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = AppColors.SelectedNavBackground,
+                                selectedLabelColor = AppColors.SelectedNavIconText
+                            )
                         )
                     }
                     activeProfile.categories.forEach { cat ->
-                        val icon = CategoryIconUtils.iconForCategory(cat, null)
+                        val catIconRes = CategoryIconUtils.iconResForCategory(cat, null)
                         FilterChip(
                             selected = categoryFilter == cat,
                             onClick = { categoryFilter = if (categoryFilter == cat) null else cat },
-                            label = { Text("$icon $cat", fontSize = 12.sp) },
+                            label = {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Image(
+                                        painter = painterResource(id = catIconRes),
+                                        contentDescription = cat,
+                                        modifier = Modifier.size(16.dp),
+                                        contentScale = ContentScale.Fit
+                                    )
+                                    Text(cat, fontSize = 12.sp)
+                                }
+                            },
                             shape = RoundedCornerShape(10.dp),
                             colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = Color(0xFF10B981),
-                                selectedLabelColor = Color.White
+                                selectedContainerColor = AppColors.SelectedNavBackground,
+                                selectedLabelColor = AppColors.SelectedNavIconText
                             )
                         )
                     }
@@ -186,7 +208,7 @@ fun AllTransactionsScreen(
                 ) {
                     Text(
                         "${filtered.size} result${if (filtered.size != 1) "s" else ""}",
-                        fontSize = 13.sp, color = Color(0xFF667085)
+                        fontSize = 13.sp, color = AppColors.SecondaryText
                     )
                     if (searchQuery.isNotBlank() || categoryFilter != null || activeFilter != TxFilter.ALL) {
                         TextButton(onClick = {
@@ -207,14 +229,15 @@ fun AllTransactionsScreen(
                         EmptyStateCard()
                     } else {
                         ElevatedCard(
-                            modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp),
-                            colors = CardDefaults.elevatedCardColors(containerColor = Color.White)
+                            modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(AppStyles.CardCornerRadius),
+                            colors = CardDefaults.elevatedCardColors(containerColor = AppColors.CardBackground),
+                            elevation = CardDefaults.elevatedCardElevation(defaultElevation = AppStyles.CardElevation)
                         ) {
                             Column(
                                 modifier = Modifier.padding(20.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally
                             ) {
-                                Text("🔍 No matching transactions found.", fontSize = 14.sp, color = Color(0xFF667085))
+                                Text("🔍 No matching transactions found.", fontSize = 14.sp, color = AppColors.SecondaryText)
                             }
                         }
                     }
@@ -239,9 +262,9 @@ fun AllTransactionsScreen(
                 item {
                     ElevatedCard(
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.elevatedCardColors(containerColor = Color.White),
-                        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)
+                        shape = RoundedCornerShape(AppStyles.CardCornerRadius),
+                        colors = CardDefaults.elevatedCardColors(containerColor = AppColors.CardBackground),
+                        elevation = CardDefaults.elevatedCardElevation(defaultElevation = AppStyles.CardElevation)
                     ) {
                         Row(
                             modifier = Modifier
@@ -263,7 +286,7 @@ fun AllTransactionsScreen(
                                 "Page $currentPage of $totalPages",
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.Medium,
-                                color = Color(0xFF101828),
+                                color = AppColors.PrimaryText,
                                 modifier = Modifier.padding(horizontal = 12.dp)
                             )
 

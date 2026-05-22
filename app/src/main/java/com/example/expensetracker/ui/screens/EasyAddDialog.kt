@@ -8,6 +8,7 @@ import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -40,7 +41,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -50,6 +53,7 @@ import androidx.core.content.ContextCompat
 import com.example.expensetracker.model.ExpenseProfile
 import com.example.expensetracker.model.MoneyTransaction
 import com.example.expensetracker.model.TransactionType
+import com.example.expensetracker.ui.theme.AppColors
 import com.example.expensetracker.utils.CategoryIconUtils
 import com.example.expensetracker.utils.ParsedTransactionDraft
 import com.example.expensetracker.utils.formatDate
@@ -188,9 +192,9 @@ fun EasyAddDialog(
             modifier = Modifier
                 .fillMaxWidth(0.94f)
                 .padding(vertical = 24.dp),
-            shape = RoundedCornerShape(24.dp),
-            colors = CardDefaults.elevatedCardColors(containerColor = Color.White),
-            elevation = CardDefaults.elevatedCardElevation(defaultElevation = 8.dp)
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.elevatedCardColors(containerColor = AppColors.CardBackground),
+            elevation = CardDefaults.elevatedCardElevation(defaultElevation = 4.dp)
         ) {
             Column(
                 modifier = Modifier
@@ -199,13 +203,13 @@ fun EasyAddDialog(
             ) {
                 // ── Header ──────────────────────────────────────────────────
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("✨", fontSize = 22.sp)
+                    Text("", fontSize = 22.sp)
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = "Easy Add",
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFF101828)
+                        color = AppColors.PrimaryText
                     )
                 }
 
@@ -214,7 +218,7 @@ fun EasyAddDialog(
                 Text(
                     text = "Type or speak a quick note and verify before saving.",
                     fontSize = 13.sp,
-                    color = Color(0xFF667085)
+                    color = AppColors.SecondaryText
                 )
 
                 Spacer(modifier = Modifier.height(14.dp))
@@ -232,10 +236,10 @@ fun EasyAddDialog(
                     label   = { Text("Quick note") },
                     placeholder = { Text("Example: food 60 morning") },
                     modifier    = Modifier.fillMaxWidth(),
-                    shape       = RoundedCornerShape(16.dp),
+                    shape       = RoundedCornerShape(14.dp),
                     singleLine  = true,
                     isError     = parseError != null,
-                    supportingText = parseError?.let { { Text(it, color = Color(0xFFDC2626), fontSize = 12.sp) } }
+                    supportingText = parseError?.let { { Text(it, color = AppColors.ExpenseError, fontSize = 12.sp) } }
                 )
 
                 Spacer(modifier = Modifier.height(10.dp))
@@ -245,15 +249,15 @@ fun EasyAddDialog(
                     onClick  = { startVoice() },
                     enabled  = !isListening && !isSaving,
                     modifier = Modifier.fillMaxWidth(),
-                    shape    = RoundedCornerShape(16.dp),
+                    shape    = RoundedCornerShape(14.dp),
                     colors   = ButtonDefaults.outlinedButtonColors(
-                        contentColor = Color(0xFF7C3AED)
+                        contentColor = AppColors.Primary
                     )
                 ) {
                     if (isListening) {
                         CircularProgressIndicator(
                             modifier    = Modifier.size(16.dp),
-                            color       = Color(0xFF7C3AED),
+                            color       = AppColors.Primary,
                             strokeWidth = 2.dp
                         )
                         Spacer(modifier = Modifier.width(8.dp))
@@ -269,10 +273,10 @@ fun EasyAddDialog(
                     Text(
                         text     = err,
                         fontSize = 12.sp,
-                        color    = Color(0xFFDC2626),
+                        color    = AppColors.ExpenseError,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .background(Color(0xFFFEF2F2), RoundedCornerShape(10.dp))
+                            .background(AppColors.ExpenseSoft, RoundedCornerShape(10.dp))
                             .padding(10.dp)
                     )
                 }
@@ -283,9 +287,9 @@ fun EasyAddDialog(
                 Button(
                     onClick = { runParser(inputText) },
                     modifier  = Modifier.fillMaxWidth(),
-                    shape     = RoundedCornerShape(16.dp),
+                    shape     = RoundedCornerShape(14.dp),
                     colors    = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF2563EB),
+                        containerColor = AppColors.Primary,
                         contentColor   = Color.White
                     )
                 ) {
@@ -296,7 +300,7 @@ fun EasyAddDialog(
                 draft?.let { d ->
                     Spacer(modifier = Modifier.height(18.dp))
 
-                    HorizontalDivider(color = Color(0xFFE4E7EC))
+                    HorizontalDivider(color = AppColors.Divider)
 
                     Spacer(modifier = Modifier.height(14.dp))
 
@@ -304,7 +308,7 @@ fun EasyAddDialog(
                         text = "Please verify before saving",
                         fontSize = 15.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = Color(0xFF344054)
+                        color = AppColors.PrimaryText
                     )
 
                     Spacer(modifier = Modifier.height(10.dp))
@@ -313,7 +317,7 @@ fun EasyAddDialog(
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .background(Color(0xFFF5F9FF), RoundedCornerShape(16.dp))
+                            .background(AppColors.SurfaceSoft, RoundedCornerShape(14.dp))
                             .padding(14.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
@@ -321,25 +325,52 @@ fun EasyAddDialog(
                             label = "Type",
                             value = if (d.type == TransactionType.EXPENSE) "Expense" else "Income",
                             valueColor = if (d.type == TransactionType.EXPENSE)
-                                Color(0xFFDC2626) else Color(0xFF059669)
+                                AppColors.ExpenseError else AppColors.SuccessIncome
                         )
                         ConfirmRow(label = "Title",    value = d.title)
-                        val catIcon = profile.categoryObjects
+                        val catIconRes = profile.categoryObjects
                             .firstOrNull { it.name.equals(d.category, ignoreCase = true) }
                             ?.iconKey
-                            .let { CategoryIconUtils.iconForCategory(d.category, it) }
-                        ConfirmRow(
-                            label = "Category",
-                            value = "$catIcon  ${d.category}"
-                        )
+                            .let { iconKey -> CategoryIconUtils.iconResForCategory(d.category, iconKey) }
+                        // Category row with image icon
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.Top
+                        ) {
+                            Text(
+                                text = "Category",
+                                fontSize = 13.sp,
+                                color = AppColors.SecondaryText,
+                                modifier = Modifier.weight(0.38f)
+                            )
+                            Row(
+                                modifier = Modifier.weight(0.62f),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Image(
+                                    painter = painterResource(id = catIconRes),
+                                    contentDescription = d.category,
+                                    modifier = Modifier.size(18.dp),
+                                    contentScale = ContentScale.Fit
+                                )
+                                Text(
+                                    text = d.category,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = AppColors.PrimaryText
+                                )
+                            }
+                        }
                         ConfirmRow(
                             label = "Amount",
                             value = "${d.currency} ${d.amount}",
-                            valueColor = Color(0xFF101828)
+                            valueColor = AppColors.PrimaryText
                         )
                         ConfirmRow(label = "Date", value = formatDisplayDateStr(d.dateStr))
                         if (d.note.isNotBlank()) {
-                            ConfirmRow(label = "Note", value = d.note, valueColor = Color(0xFF667085))
+                            ConfirmRow(label = "Note", value = d.note, valueColor = AppColors.SecondaryText)
                         }
                     }
 
@@ -352,10 +383,10 @@ fun EasyAddDialog(
                             text = "ℹ️ \"${d.category}\" is not in your categories. " +
                                     "It will be added automatically.",
                             fontSize = 12.sp,
-                            color = Color(0xFF92400E),
+                            color = AppColors.Warning,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .background(Color(0xFFFFFBEB), RoundedCornerShape(10.dp))
+                                .background(AppColors.WarningSoft, RoundedCornerShape(10.dp))
                                 .padding(10.dp)
                         )
                     }
@@ -365,10 +396,10 @@ fun EasyAddDialog(
                         Text(
                             text = err,
                             fontSize = 12.sp,
-                            color = Color(0xFFDC2626),
+                            color = AppColors.ExpenseError,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .background(Color(0xFFFEF2F2), RoundedCornerShape(10.dp))
+                                .background(AppColors.ExpenseSoft, RoundedCornerShape(10.dp))
                                 .padding(10.dp)
                         )
                     }
@@ -410,9 +441,9 @@ fun EasyAddDialog(
                         },
                         enabled   = !isSaving,
                         modifier  = Modifier.fillMaxWidth(),
-                        shape     = RoundedCornerShape(16.dp),
+                        shape     = RoundedCornerShape(14.dp),
                         colors    = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFF059669),
+                            containerColor = AppColors.SuccessIncome,
                             contentColor   = Color.White
                         )
                     ) {
@@ -442,7 +473,7 @@ fun EasyAddDialog(
                             modifier = Modifier.weight(1f),
                             shape    = RoundedCornerShape(14.dp),
                             colors   = ButtonDefaults.outlinedButtonColors(
-                                contentColor = Color(0xFF2563EB)
+                                contentColor = AppColors.Primary
                             )
                         ) {
                             Text("Edit Details")
@@ -452,7 +483,7 @@ fun EasyAddDialog(
                             onClick  = { if (!isSaving) onDismiss() },
                             modifier = Modifier.weight(1f)
                         ) {
-                            Text("Cancel", color = Color(0xFF667085))
+                            Text("Cancel", color = AppColors.SecondaryText)
                         }
                     }
                 }
@@ -464,7 +495,7 @@ fun EasyAddDialog(
                         onClick  = onDismiss,
                         modifier = Modifier.align(Alignment.End)
                     ) {
-                        Text("Cancel", color = Color(0xFF667085))
+                        Text("Cancel", color = AppColors.SecondaryText)
                     }
                 }
             }
@@ -479,7 +510,7 @@ fun EasyAddDialog(
 private fun ConfirmRow(
     label: String,
     value: String,
-    valueColor: Color = Color(0xFF101828)
+    valueColor: Color = AppColors.PrimaryText
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -489,7 +520,7 @@ private fun ConfirmRow(
         Text(
             text  = label,
             fontSize = 13.sp,
-            color = Color(0xFF667085),
+            color = AppColors.SecondaryText,
             modifier = Modifier.weight(0.38f)
         )
         Text(

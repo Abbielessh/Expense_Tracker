@@ -12,6 +12,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
+import com.example.expensetracker.ui.theme.AppColors
 
 @Composable
 fun ChangePasswordDialog(
@@ -32,7 +33,7 @@ fun ChangePasswordDialog(
         title = { Text("Change Password", fontWeight = FontWeight.Bold) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text("Enter a new password for your account.", fontSize = 14.sp, color = Color(0xFF667085))
+                Text("Enter a new password for your account.", fontSize = 14.sp, color = AppColors.SecondaryText)
 
                 OutlinedTextField(
                     value = newPassword,
@@ -47,7 +48,7 @@ fun ChangePasswordDialog(
                             onClick = { newVisible = !newVisible },
                             contentPadding = PaddingValues(horizontal = 8.dp)
                         ) {
-                            Text(if (newVisible) "Hide" else "Show", fontSize = 12.sp, color = Color(0xFF667085))
+                            Text(if (newVisible) "Hide" else "Show", fontSize = 12.sp, color = AppColors.SecondaryText)
                         }
                     }
                 )
@@ -65,26 +66,26 @@ fun ChangePasswordDialog(
                             onClick = { confirmVisible = !confirmVisible },
                             contentPadding = PaddingValues(horizontal = 8.dp)
                         ) {
-                            Text(if (confirmVisible) "Hide" else "Show", fontSize = 12.sp, color = Color(0xFF667085))
+                            Text(if (confirmVisible) "Hide" else "Show", fontSize = 12.sp, color = AppColors.SecondaryText)
                         }
                     }
                 )
 
-                Text("Password must be at least 6 characters.", fontSize = 11.sp, color = Color(0xFF9E9E9E))
+                Text("Password must be at least 6 characters.", fontSize = 11.sp, color = AppColors.TextMuted)
 
                 if (message != null) {
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(8.dp),
                         colors = CardDefaults.cardColors(
-                            containerColor = if (isError) Color(0xFFFFEBEE) else Color(0xFFE8F5E9)
+                            containerColor = if (isError) AppColors.ExpenseSoft else AppColors.IncomeSoft
                         )
                     ) {
                         Text(
                             text = message!!,
                             modifier = Modifier.padding(10.dp),
                             fontSize = 13.sp,
-                            color = if (isError) Color(0xFFB71C1C) else Color(0xFF1B5E20)
+                            color = if (isError) AppColors.ExpenseError else AppColors.SuccessIncome
                         )
                     }
                 }

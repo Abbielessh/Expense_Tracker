@@ -1,5 +1,6 @@
 package com.example.expensetracker.ui.screens
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -13,6 +14,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -28,6 +31,8 @@ import com.example.expensetracker.model.TransactionType
 import com.example.expensetracker.ui.components.EmptyStateCard
 import com.example.expensetracker.ui.components.SummaryMiniCard
 import com.example.expensetracker.ui.components.TransactionRow
+import com.example.expensetracker.ui.theme.AppColors
+import com.example.expensetracker.ui.theme.AppStyles
 import com.example.expensetracker.utils.CategoryIconUtils
 import com.example.expensetracker.utils.formatMoney
 import com.example.expensetracker.utils.getConvertedAmount
@@ -79,7 +84,7 @@ fun HomeScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Brush.verticalGradient(listOf(Color(0xFFEAF2FF), Color(0xFFF8FBFF), Color(0xFFFFFFFF))))
+            .background(AppColors.Background)
     ) {
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
@@ -94,10 +99,10 @@ fun HomeScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column {
-                        Text("Welcome back", fontSize = 14.sp, color = Color(0xFF667085))
+                        Text("Welcome back", fontSize = 14.sp, color = AppColors.SecondaryText)
                         Text(
                             activeProfile.name, fontSize = 26.sp,
-                            fontWeight = FontWeight.ExtraBold, color = Color(0xFF101828)
+                            fontWeight = FontWeight.ExtraBold, color = AppColors.PrimaryText
                         )
                     }
                     androidx.compose.foundation.Image(
@@ -118,9 +123,9 @@ fun HomeScreen(
                 item {
                     ElevatedCard(
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(20.dp),
-                        colors = CardDefaults.elevatedCardColors(containerColor = Color(0xFFFFFBEB)),
-                        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 3.dp)
+                        shape = RoundedCornerShape(AppStyles.CardCornerRadius),
+                        colors = CardDefaults.elevatedCardColors(containerColor = AppColors.CardBackground),
+                        elevation = CardDefaults.elevatedCardElevation(defaultElevation = AppStyles.CardElevation)
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -128,29 +133,34 @@ fun HomeScreen(
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
                                     "Upcoming Recurring",
-                                    fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color(0xFF92400E)
+                                    fontSize = 16.sp, fontWeight = FontWeight.Bold, color = AppColors.Warning
                                 )
                             }
                             Spacer(modifier = Modifier.height(10.dp))
                             upcoming.forEach { rec ->
-                                val icon = CategoryIconUtils.iconForCategory(rec.category, null)
+                                val iconRes = CategoryIconUtils.iconResForCategory(rec.category, null)
                                 Row(
                                     modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp),
                                     horizontalArrangement = Arrangement.SpaceBetween,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Text(icon, fontSize = 16.sp)
+                                        Image(
+                                            painter = painterResource(id = iconRes),
+                                            contentDescription = rec.category,
+                                            modifier = Modifier.size(20.dp),
+                                            contentScale = ContentScale.Fit
+                                        )
                                         Spacer(modifier = Modifier.width(6.dp))
                                         Column {
                                             Text(rec.title, fontSize = 14.sp, fontWeight = FontWeight.Medium)
-                                            Text("${rec.frequency} • ${com.example.expensetracker.utils.formatDisplayDateStr(rec.nextDueDate)}", fontSize = 11.sp, color = Color(0xFF667085))
+                                            Text("${rec.frequency} • ${com.example.expensetracker.utils.formatDisplayDateStr(rec.nextDueDate)}", fontSize = 11.sp, color = AppColors.SecondaryText)
                                         }
                                     }
                                     Text(
                                         "- ${formatMoney(rec.amount, appData.currencyCode)}",
                                         fontSize = 13.sp, fontWeight = FontWeight.Bold,
-                                        color = Color(0xFFDC2626)
+                                        color = AppColors.ExpenseError
                                     )
                                 }
                             }
@@ -169,17 +179,17 @@ fun HomeScreen(
                     Column {
                         Text(
                             "Recent Transactions", fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold, color = Color(0xFF101828)
+                            fontWeight = FontWeight.Bold, color = AppColors.PrimaryText
                         )
                         if (hasMore) {
                             Text(
                                 "Showing latest $RECENT_LIMIT of $totalCount",
-                                fontSize = 12.sp, color = Color(0xFF667085)
+                                fontSize = 12.sp, color = AppColors.SecondaryText
                             )
                         }
                     }
                     if (totalCount > 0) {
-                        Text("$totalCount total", fontSize = 12.sp, color = Color(0xFF667085))
+                        Text("$totalCount total", fontSize = 12.sp, color = AppColors.SecondaryText)
                     }
                 }
             }
@@ -209,7 +219,7 @@ fun HomeScreen(
                         onClick = onViewAllTransactions,
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(14.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2563EB))
+                        colors = ButtonDefaults.buttonColors(containerColor = AppColors.PrimaryAccent)
                     ) {
                         Text(
                             "View All Transactions  →",
@@ -253,21 +263,21 @@ fun BalanceSummaryCard(profile: ExpenseProfile, currencyCode: String) {
     val balance = totalIncome - totalExpense
 
     ElevatedCard(
-        modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.elevatedCardColors(containerColor = Color.White),
-        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 5.dp)
+        modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(AppStyles.CardCornerRadius),
+        colors = CardDefaults.elevatedCardColors(containerColor = AppColors.CardBackground),
+        elevation = CardDefaults.elevatedCardElevation(defaultElevation = AppStyles.CardElevation)
     ) {
         Column(modifier = Modifier.padding(18.dp)) {
             Text("Overview", fontSize = 20.sp, fontWeight = FontWeight.Bold)
             Spacer(modifier = Modifier.height(12.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                SummaryMiniCard("Income", formatMoney(totalIncome, currencyCode), Color(0xFF059669), Modifier.weight(1f))
-                SummaryMiniCard("Expense", formatMoney(totalExpense, currencyCode), Color(0xFFDC2626), Modifier.weight(1f))
+                SummaryMiniCard("Income", formatMoney(totalIncome, currencyCode), AppColors.SuccessIncome, Modifier.weight(1f))
+                SummaryMiniCard("Expense", formatMoney(totalExpense, currencyCode), AppColors.ExpenseError, Modifier.weight(1f))
             }
             Spacer(modifier = Modifier.height(10.dp))
             SummaryMiniCard(
                 "Balance", formatMoney(balance, currencyCode),
-                if (balance >= 0) Color(0xFF2563EB) else Color(0xFFDC2626),
+                if (balance >= 0) AppColors.SuccessIncome else AppColors.ExpenseError,
                 Modifier.fillMaxWidth()
             )
         }
@@ -326,17 +336,43 @@ fun EditTransactionDialog(
                                 val richCats = profile.categoryObjects
                                 if (richCats.isNotEmpty()) {
                                     richCats.forEach { cat ->
-                                        val emoji = CategoryIconUtils.emojiForKey(cat.iconKey)
+                                        val catIconRes = CategoryIconUtils.drawableForKey(cat.iconKey)
                                         DropdownMenuItem(
-                                            text = { Text("$emoji  ${cat.name}") },
+                                            text = {
+                                                Row(
+                                                    verticalAlignment = Alignment.CenterVertically,
+                                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                                ) {
+                                                    Image(
+                                                        painter = painterResource(id = catIconRes),
+                                                        contentDescription = cat.name,
+                                                        modifier = Modifier.size(20.dp),
+                                                        contentScale = ContentScale.Fit
+                                                    )
+                                                    Text(cat.name)
+                                                }
+                                            },
                                             onClick = { categoryText = cat.name; categoryMenuExpanded = false }
                                         )
                                     }
                                 } else {
                                     profile.categories.forEach { category ->
-                                        val emoji = CategoryIconUtils.iconForCategory(category, null)
+                                        val catIconRes = CategoryIconUtils.iconResForCategory(category, null)
                                         DropdownMenuItem(
-                                            text = { Text("$emoji  $category") },
+                                            text = {
+                                                Row(
+                                                    verticalAlignment = Alignment.CenterVertically,
+                                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                                ) {
+                                                    Image(
+                                                        painter = painterResource(id = catIconRes),
+                                                        contentDescription = category,
+                                                        modifier = Modifier.size(20.dp),
+                                                        contentScale = ContentScale.Fit
+                                                    )
+                                                    Text(category)
+                                                }
+                                            },
                                             onClick = { categoryText = category; categoryMenuExpanded = false }
                                         )
                                     }

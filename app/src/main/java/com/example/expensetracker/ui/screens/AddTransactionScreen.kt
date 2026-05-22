@@ -34,9 +34,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.foundation.Image
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -45,6 +48,8 @@ import com.example.expensetracker.model.ExpenseProfile
 import com.example.expensetracker.model.MoneyTransaction
 import com.example.expensetracker.model.TransactionType
 import com.example.expensetracker.ui.components.AddCategoryDialog
+import com.example.expensetracker.ui.theme.AppColors
+import com.example.expensetracker.ui.theme.AppStyles
 import com.example.expensetracker.utils.CategoryIconUtils
 import com.example.expensetracker.utils.formatDate
 import com.example.expensetracker.utils.parseDateStart
@@ -73,15 +78,7 @@ fun AddTransactionScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(
-                Brush.verticalGradient(
-                    listOf(
-                        Color(0xFFEAF2FF),
-                        Color(0xFFF8FBFF),
-                        Color(0xFFFFFFFF)
-                    )
-                )
-            )
+            .background(AppColors.Background)
     ) {
         LazyColumn(
             modifier = Modifier
@@ -92,9 +89,9 @@ fun AddTransactionScreen(
             item {
                 ElevatedCard(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(24.dp),
-                    colors = CardDefaults.elevatedCardColors(containerColor = Color.White),
-                    elevation = CardDefaults.elevatedCardElevation(defaultElevation = 5.dp)
+                    shape = RoundedCornerShape(AppStyles.CardCornerRadius),
+                    colors = CardDefaults.elevatedCardColors(containerColor = AppColors.CardBackground),
+                    elevation = CardDefaults.elevatedCardElevation(defaultElevation = AppStyles.CardElevation)
                 ) {
                     Column(modifier = Modifier.padding(18.dp)) {
                         Row(
@@ -111,14 +108,14 @@ fun AddTransactionScreen(
                                 onClick = { showQuickAdd = true },
                                 shape  = RoundedCornerShape(14.dp),
                                 colors = ButtonDefaults.buttonColors(
-                                    containerColor = Color(0xFF7C3AED),
+                                    containerColor = AppColors.PrimaryAccent,
                                     contentColor   = Color.White
                                 ),
                                 contentPadding = androidx.compose.foundation.layout.PaddingValues(
                                     horizontal = 12.dp, vertical = 6.dp
                                 )
                             ) {
-                                Text("✨ Easy Add", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                                Text("Easy Add", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
                             }
                         }
 
@@ -166,15 +163,22 @@ fun AddTransactionScreen(
                             Column {
                                 Spacer(modifier = Modifier.height(10.dp))
 
-                                // Show icon preview next to category text
-                                val iconPreview = CategoryIconUtils.iconForCategory(categoryText, null)
+                                // Show image icon preview next to category text
+                                val iconRes = CategoryIconUtils.iconResForCategory(categoryText, null)
                                 OutlinedTextField(
                                     value = categoryText,
                                     onValueChange = { categoryText = it },
                                     label = { Text("Category") },
                                     placeholder = { Text("Type manually or select from dropdown") },
                                     leadingIcon = if (categoryText.isNotBlank()) {
-                                        { Text(iconPreview, fontSize = 18.sp) }
+                                        {
+                                            Image(
+                                                painter = painterResource(id = iconRes),
+                                                contentDescription = categoryText,
+                                                modifier = Modifier.size(22.dp),
+                                                contentScale = ContentScale.Fit
+                                            )
+                                        }
                                     } else null,
                                     modifier = Modifier.fillMaxWidth(),
                                     shape = RoundedCornerShape(16.dp),
@@ -199,9 +203,22 @@ fun AddTransactionScreen(
                                             val richCats = profile.categoryObjects
                                             if (richCats.isNotEmpty()) {
                                                 richCats.forEach { cat ->
-                                                    val emoji = CategoryIconUtils.emojiForKey(cat.iconKey)
+                                                    val catIconRes = CategoryIconUtils.drawableForKey(cat.iconKey)
                                                     DropdownMenuItem(
-                                                        text = { Text("$emoji  ${cat.name}") },
+                                                        text = {
+                                                            Row(
+                                                                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                                                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                                            ) {
+                                                                Image(
+                                                                    painter = painterResource(id = catIconRes),
+                                                                    contentDescription = cat.name,
+                                                                    modifier = Modifier.size(20.dp),
+                                                                    contentScale = ContentScale.Fit
+                                                                )
+                                                                Text(cat.name)
+                                                            }
+                                                        },
                                                         onClick = {
                                                             categoryText = cat.name
                                                             categoryMenuExpanded = false
@@ -210,9 +227,22 @@ fun AddTransactionScreen(
                                                 }
                                             } else {
                                                 profile.categories.forEach { category ->
-                                                    val emoji = CategoryIconUtils.iconForCategory(category, null)
+                                                    val catIconRes = CategoryIconUtils.iconResForCategory(category, null)
                                                     DropdownMenuItem(
-                                                        text = { Text("$emoji  $category") },
+                                                        text = {
+                                                            Row(
+                                                                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                                                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                                            ) {
+                                                                Image(
+                                                                    painter = painterResource(id = catIconRes),
+                                                                    contentDescription = category,
+                                                                    modifier = Modifier.size(20.dp),
+                                                                    contentScale = ContentScale.Fit
+                                                                )
+                                                                Text(category)
+                                                            }
+                                                        },
                                                         onClick = {
                                                             categoryText = category
                                                             categoryMenuExpanded = false
@@ -291,7 +321,7 @@ fun AddTransactionScreen(
                             shape = RoundedCornerShape(18.dp),
                             enabled = !isSaving,
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = Color(0xFF2563EB),
+                                containerColor = AppColors.PrimaryAccent,
                                 contentColor = Color.White
                             )
                         ) {
@@ -316,7 +346,7 @@ fun AddTransactionScreen(
     if (showAddCategoryDialog) {
         AddCategoryDialog(
             onDismiss = { showAddCategoryDialog = false },
-            onAdd = { category ->
+            onAdd = { category: String ->
                 onAddCategory(category)
                 categoryText = category
                 showAddCategoryDialog = false

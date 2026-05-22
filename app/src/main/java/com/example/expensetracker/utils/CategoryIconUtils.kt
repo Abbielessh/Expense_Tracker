@@ -1,25 +1,28 @@
 package com.example.expensetracker.utils
 
+import androidx.annotation.DrawableRes
+import com.example.expensetracker.R
+
 /**
- * Maps a category name or icon_key to an emoji icon.
+ * Maps a category icon_key to a drawable resource ID.
  * Falls back gracefully so the app never crashes on unknown categories.
  */
 object CategoryIconUtils {
 
-    private val iconKeyToEmoji = mapOf(
-        "food"          to "🍔",
-        "travel"        to "🚗",
-        "shopping"      to "🛍️",
-        "rent"          to "🏠",
-        "bills"         to "⚡",
-        "health"        to "🏥",
-        "education"     to "🎓",
-        "entertainment" to "🎬",
-        "fuel"          to "⛽",
-        "income"        to "💰",
-        "other"         to "📌",
-        "zepto"         to "🛒",
-        "personal"      to "👤"
+    private val iconKeyToDrawable: Map<String, Int> = mapOf(
+        "food"          to R.drawable.ic_cat_food,
+        "travel"        to R.drawable.ic_cat_travel,
+        "shopping"      to R.drawable.ic_cat_shopping,
+        "rent"          to R.drawable.ic_cat_rent,
+        "bills"         to R.drawable.ic_cat_bills,
+        "health"        to R.drawable.ic_cat_health,
+        "education"     to R.drawable.ic_cat_education,
+        "entertainment" to R.drawable.ic_cat_entertainment,
+        "fuel"          to R.drawable.ic_cat_fuel,
+        "income"        to R.drawable.ic_cat_income,
+        "other"         to R.drawable.ic_cat_other,
+        "zepto"         to R.drawable.ic_cat_zepto,
+        "personal"      to R.drawable.ic_cat_personal
     )
 
     /** Best-effort guess of icon_key from a category display name */
@@ -58,6 +61,7 @@ object CategoryIconUtils {
         "medicine"      to "health",
         "hospital"      to "health",
         "pharmacy"      to "health",
+        "gym"           to "health",
         "education"     to "education",
         "school"        to "education",
         "college"       to "education",
@@ -72,7 +76,6 @@ object CategoryIconUtils {
         "spotify"       to "entertainment",
         "games"         to "entertainment",
         "game"          to "entertainment",
-        "gym"           to "health",
         "fuel"          to "fuel",
         "petrol"        to "fuel",
         "diesel"        to "fuel",
@@ -88,11 +91,13 @@ object CategoryIconUtils {
         "spa"           to "personal"
     )
 
-    val allIconKeys: List<String> = iconKeyToEmoji.keys.toList()
+    val allIconKeys: List<String> = iconKeyToDrawable.keys.toList()
 
-    fun emojiForKey(iconKey: String?): String {
-        if (iconKey.isNullOrBlank()) return "📌"
-        return iconKeyToEmoji[iconKey.lowercase().trim()] ?: "📌"
+    /** Returns the drawable resource ID for the given icon key. Falls back to ic_cat_other. */
+    @DrawableRes
+    fun drawableForKey(iconKey: String?): Int {
+        if (iconKey.isNullOrBlank()) return R.drawable.ic_cat_other
+        return iconKeyToDrawable[iconKey.lowercase().trim()] ?: R.drawable.ic_cat_other
     }
 
     fun guessIconKeyFromName(categoryName: String): String {
@@ -106,13 +111,24 @@ object CategoryIconUtils {
 
     /**
      * Primary entry point used in UI.
+     * Returns the drawable resource ID for the given category.
      * iconKey takes priority; falls back to name-based guess.
      */
-    fun iconForCategory(categoryName: String, iconKey: String?): String {
+    @DrawableRes
+    fun iconResForCategory(categoryName: String, iconKey: String?): Int {
         val key = when {
             !iconKey.isNullOrBlank() && iconKey != "other" -> iconKey
             else -> guessIconKeyFromName(categoryName)
         }
-        return emojiForKey(key)
+        return drawableForKey(key)
     }
+
+    // ── Legacy emoji helpers kept for any old callers (returns empty string now) ──
+    // These are no longer used in the UI but kept to avoid breaking any call sites
+    // that may not have been updated yet.
+    @Deprecated("Use drawableForKey() or iconResForCategory() instead")
+    fun emojiForKey(iconKey: String?): String = ""
+
+    @Deprecated("Use iconResForCategory() instead")
+    fun iconForCategory(categoryName: String, iconKey: String?): String = ""
 }

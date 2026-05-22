@@ -26,6 +26,8 @@ import com.example.expensetracker.model.ExpenseAppData
 import com.example.expensetracker.notifications.ReminderReceiver
 import com.example.expensetracker.notifications.ReminderScheduler
 import com.example.expensetracker.ui.components.CurrencyDialog
+import com.example.expensetracker.ui.theme.AppColors
+import com.example.expensetracker.ui.theme.AppStyles
 import com.example.expensetracker.utils.DisplayRefreshRateUtils
 import com.example.expensetracker.utils.PdfSplitType
 import kotlinx.coroutines.launch
@@ -40,6 +42,8 @@ fun SettingsScreen(
     onNavigateToBudgets: () -> Unit,
     onNavigateToRecurring: () -> Unit = {},
     onApplyRefreshRate: (mode: String, hz: Float) -> Unit = { _, _ -> },
+    isDarkMode: Boolean = false,
+    onDarkModeToggle: (Boolean) -> Unit = {},
     repository: com.example.expensetracker.data.SupabaseRepository
 ) {
     val context = LocalContext.current
@@ -170,9 +174,7 @@ fun SettingsScreen(
     }
 
     Box(
-        modifier = Modifier.fillMaxSize().background(
-            Brush.verticalGradient(listOf(Color(0xFFEAF2FF), Color(0xFFF8FBFF), Color(0xFFFFFFFF)))
-        )
+        modifier = Modifier.fillMaxSize().background(AppColors.Background)
     ) {
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
@@ -180,8 +182,61 @@ fun SettingsScreen(
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             item {
-                Text("Settings", fontSize = 28.sp, fontWeight = FontWeight.ExtraBold, color = Color(0xFF101828))
+                Text("Settings", fontSize = 28.sp, fontWeight = FontWeight.ExtraBold, color = AppColors.PrimaryText)
                 Spacer(modifier = Modifier.height(10.dp))
+            }
+
+            // Appearance — Dark Mode toggle
+            item {
+                ElevatedCard(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(AppStyles.CardCornerRadius),
+                    colors = CardDefaults.elevatedCardColors(containerColor = AppColors.CardBackground),
+                    elevation = CardDefaults.elevatedCardElevation(defaultElevation = AppStyles.CardElevation)
+                ) {
+                    Column(modifier = Modifier.padding(18.dp)) {
+                        Text(
+                            "Appearance",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = AppColors.PrimaryText
+                        )
+                        Text(
+                            "Choose your preferred theme",
+                            fontSize = 13.sp,
+                            color = AppColors.SecondaryText
+                        )
+                        Spacer(modifier = Modifier.height(14.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    "Dark Mode",
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = AppColors.PrimaryText
+                                )
+                                Text(
+                                    if (isDarkMode) "Dark theme is active" else "Using light theme",
+                                    fontSize = 13.sp,
+                                    color = AppColors.SecondaryText
+                                )
+                            }
+                            Switch(
+                                checked = isDarkMode,
+                                onCheckedChange = onDarkModeToggle,
+                                colors = SwitchDefaults.colors(
+                                    checkedThumbColor = AppColors.CardBackground,
+                                    checkedTrackColor = AppColors.Primary,
+                                    uncheckedThumbColor = AppColors.SecondaryText,
+                                    uncheckedTrackColor = AppColors.SurfaceSoft
+                                )
+                            )
+                        }
+                    }
+                }
             }
 
             // Currency
@@ -215,14 +270,14 @@ fun SettingsScreen(
             item {
                 ElevatedCard(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(20.dp),
-                    colors = CardDefaults.elevatedCardColors(containerColor = Color.White),
-                    elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)
+                    shape = RoundedCornerShape(AppStyles.CardCornerRadius),
+                    colors = CardDefaults.elevatedCardColors(containerColor = AppColors.CardBackground),
+                    elevation = CardDefaults.elevatedCardElevation(defaultElevation = AppStyles.CardElevation)
                 ) {
                     Column(modifier = Modifier.padding(18.dp)) {
-                        Text("🔔 Daily Reminder", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color(0xFF101828))
+                        Text("🔔 Daily Reminder", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = AppColors.PrimaryText)
                         Spacer(modifier = Modifier.height(4.dp))
-                        Text("Get a daily notification to record your expenses.", fontSize = 14.sp, color = Color(0xFF667085))
+                        Text("Get a daily notification to record your expenses.", fontSize = 14.sp, color = AppColors.SecondaryText)
                         Spacer(modifier = Modifier.height(12.dp))
 
                         // Enable toggle
@@ -238,14 +293,14 @@ fun SettingsScreen(
                             Spacer(modifier = Modifier.height(6.dp))
                             Text(
                                 "⚠️ Notification permission is required for daily reminders.",
-                                color = Color(0xFFDC2626), fontSize = 13.sp
+                                color = AppColors.ExpenseError, fontSize = 13.sp
                             )
                         }
 
                         Spacer(modifier = Modifier.height(12.dp))
 
                         // ── Dropdown time picker ─────────────────────────────
-                        Text("Reminder time", fontSize = 14.sp, color = Color(0xFF667085))
+                        Text("Reminder time", fontSize = 14.sp, color = AppColors.SecondaryText)
                         Spacer(modifier = Modifier.height(8.dp))
 
                         Row(
@@ -322,7 +377,7 @@ fun SettingsScreen(
                         Spacer(modifier = Modifier.height(6.dp))
                         Text(
                             "Selected: ${formatDisplayTime()}",
-                            fontSize = 13.sp, color = Color(0xFF2563EB), fontWeight = FontWeight.Bold
+                            fontSize = 13.sp, color = AppColors.Primary, fontWeight = FontWeight.Bold
                         )
 
                         Spacer(modifier = Modifier.height(10.dp))
@@ -349,7 +404,7 @@ fun SettingsScreen(
                             },
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(14.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7C3AED))
+                            colors = ButtonDefaults.buttonColors(containerColor = AppColors.PrimaryAccent)
                         ) {
                             if (reminderSaving) {
                                 CircularProgressIndicator(modifier = Modifier.size(18.dp), color = Color.White, strokeWidth = 2.dp)
@@ -379,20 +434,20 @@ fun SettingsScreen(
                         if (reminderMessage.isNotBlank()) {
                             Spacer(modifier = Modifier.height(6.dp))
                             Text(reminderMessage, fontSize = 13.sp,
-                                color = if (reminderMessage.contains("✓")) Color(0xFF059669) else Color(0xFF667085))
+                                color = if (reminderMessage.contains("✓")) AppColors.SuccessIncome else AppColors.SecondaryText)
                         }
 
                         // Debug info
                         Spacer(modifier = Modifier.height(10.dp))
-                        HorizontalDivider(color = Color(0xFFE5E7EB))
+                        HorizontalDivider(color = AppColors.Border)
                         Spacer(modifier = Modifier.height(6.dp))
-                        Text("Debug", fontSize = 12.sp, color = Color(0xFF9CA3AF), fontWeight = FontWeight.Bold)
+                        Text("Debug", fontSize = 12.sp, color = AppColors.SecondaryText, fontWeight = FontWeight.Bold)
                         Text("Reminder enabled: ${if (reminderEnabled) "Yes" else "No"}",
-                            fontSize = 12.sp, color = Color(0xFF6B7280))
+                            fontSize = 12.sp, color = AppColors.SecondaryText)
                         Text("Reminder time: ${formatDisplayTime()} (24h: ${reminderHour.toString().padStart(2,'0')}:${reminderMinute.toString().padStart(2,'0')})",
-                            fontSize = 12.sp, color = Color(0xFF6B7280))
+                            fontSize = 12.sp, color = AppColors.SecondaryText)
                         Text("Notification permission: ${if (hasNotifPermission()) "Granted" else "Denied"}",
-                            fontSize = 12.sp, color = if (hasNotifPermission()) Color(0xFF059669) else Color(0xFFDC2626))
+                            fontSize = 12.sp, color = if (hasNotifPermission()) AppColors.SuccessIncome else AppColors.ExpenseError)
                     }
                 }
             }
@@ -401,30 +456,30 @@ fun SettingsScreen(
             item {
                 ElevatedCard(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(20.dp),
-                    colors = CardDefaults.elevatedCardColors(containerColor = Color.White),
-                    elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)
+                    shape = RoundedCornerShape(AppStyles.CardCornerRadius),
+                    colors = CardDefaults.elevatedCardColors(containerColor = AppColors.CardBackground),
+                    elevation = CardDefaults.elevatedCardElevation(defaultElevation = AppStyles.CardElevation)
                 ) {
                     Column(modifier = Modifier.padding(18.dp)) {
                         Text(
                             "⚡ Smooth Display",
-                            fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color(0xFF101828)
+                            fontSize = 18.sp, fontWeight = FontWeight.Bold, color = AppColors.PrimaryText
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             "Set preferred display refresh rate for smoother scrolling.",
-                            fontSize = 14.sp, color = Color(0xFF667085)
+                            fontSize = 14.sp, color = AppColors.SecondaryText
                         )
                         Spacer(modifier = Modifier.height(8.dp))
 
                         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                             Text(
                                 "Current: ${currentHz.toInt()}Hz",
-                                fontSize = 13.sp, color = Color(0xFF2563EB), fontWeight = FontWeight.Medium
+                                fontSize = 13.sp, color = AppColors.Primary, fontWeight = FontWeight.Medium
                             )
                             Text(
                                 "Available: ${availableHz.joinToString(", ") { "${it.toInt()}Hz" }}",
-                                fontSize = 13.sp, color = Color(0xFF667085)
+                                fontSize = 13.sp, color = AppColors.SecondaryText
                             )
                         }
 
@@ -441,7 +496,7 @@ fun SettingsScreen(
                                     DisplayRefreshRateUtils.modeLabel(refreshMode, refreshHz, availableHz),
                                     modifier = Modifier.weight(1f)
                                 )
-                                Text("▾", fontSize = 14.sp, color = Color(0xFF667085))
+                                Text("▾", fontSize = 14.sp, color = AppColors.SecondaryText)
                             }
                             DropdownMenu(
                                 expanded = refreshDropExpanded,
@@ -502,7 +557,7 @@ fun SettingsScreen(
                             },
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(14.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2563EB))
+                            colors = ButtonDefaults.buttonColors(containerColor = AppColors.PrimaryAccent)
                         ) {
                             Text("Apply", fontWeight = FontWeight.Bold, color = Color.White)
                         }
@@ -513,9 +568,9 @@ fun SettingsScreen(
                                 refreshMessage,
                                 fontSize = 13.sp,
                                 color = if (refreshMessage.contains("not available"))
-                                    Color(0xFFDC2626)
+                                    AppColors.ExpenseError
                                 else
-                                    Color(0xFF059669)
+                                    AppColors.SuccessIncome
                             )
                         }
                     }
@@ -526,23 +581,23 @@ fun SettingsScreen(
             item {
                 ElevatedCard(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(20.dp),
-                    colors = CardDefaults.elevatedCardColors(containerColor = Color.White),
-                    elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)
+                    shape = RoundedCornerShape(AppStyles.CardCornerRadius),
+                    colors = CardDefaults.elevatedCardColors(containerColor = AppColors.CardBackground),
+                    elevation = CardDefaults.elevatedCardElevation(defaultElevation = AppStyles.CardElevation)
                 ) {
                     Column(modifier = Modifier.padding(18.dp)) {
-                        Text("Export Data", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color(0xFF101828))
+                        Text("Export Data", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = AppColors.PrimaryText)
                         Spacer(modifier = Modifier.height(4.dp))
-                        Text("Download a PDF or CSV report for the active profile", fontSize = 14.sp, color = Color(0xFF667085))
+                        Text("Download a PDF or CSV report for the active profile", fontSize = 14.sp, color = AppColors.SecondaryText)
                         Spacer(modifier = Modifier.height(12.dp))
                         Button(
                             onClick = { showPdfSplitDialog = true }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00A3FF))
+                            colors = ButtonDefaults.buttonColors(containerColor = AppColors.PrimaryAccent)
                         ) { Text("Export PDF Report", fontWeight = FontWeight.Bold, color = Color.White) }
                         Spacer(modifier = Modifier.height(8.dp))
                         Button(
                             onClick = onExportCsv, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF10B981))
+                            colors = ButtonDefaults.buttonColors(containerColor = AppColors.SuccessIncome)
                         ) { Text("Export CSV / Excel", fontWeight = FontWeight.Bold, color = Color.White) }
                     }
                 }
@@ -552,23 +607,23 @@ fun SettingsScreen(
             item {
                 ElevatedCard(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(20.dp),
-                    colors = CardDefaults.elevatedCardColors(containerColor = Color.White),
-                    elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)
+                    shape = RoundedCornerShape(AppStyles.CardCornerRadius),
+                    colors = CardDefaults.elevatedCardColors(containerColor = AppColors.CardBackground),
+                    elevation = CardDefaults.elevatedCardElevation(defaultElevation = AppStyles.CardElevation)
                 ) {
                     Column(modifier = Modifier.padding(18.dp)) {
-                        Text("Account", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color(0xFF101828))
+                        Text("Account", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = AppColors.PrimaryText)
                         Spacer(modifier = Modifier.height(12.dp))
                         Button(
                             onClick = { showChangePassword = true },
                             modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF6366F1))
+                            colors = ButtonDefaults.buttonColors(containerColor = AppColors.PrimaryAccent)
                         ) { Text("Change Password", fontWeight = FontWeight.Bold, color = Color.White) }
                         Spacer(modifier = Modifier.height(8.dp))
                         Button(
                             onClick = onLogout,
                             modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF4D4D))
+                            colors = ButtonDefaults.buttonColors(containerColor = AppColors.ExpenseError)
                         ) { Text("Logout", fontWeight = FontWeight.Bold, color = Color.White) }
                     }
                 }
@@ -578,14 +633,14 @@ fun SettingsScreen(
             item {
                 ElevatedCard(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(20.dp),
-                    colors = CardDefaults.elevatedCardColors(containerColor = Color.White),
-                    elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)
+                    shape = RoundedCornerShape(AppStyles.CardCornerRadius),
+                    colors = CardDefaults.elevatedCardColors(containerColor = AppColors.CardBackground),
+                    elevation = CardDefaults.elevatedCardElevation(defaultElevation = AppStyles.CardElevation)
                 ) {
                     Column(modifier = Modifier.padding(18.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("Expense Tracker App", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color(0xFF101828))
+                        Text("Expense Tracker App", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = AppColors.PrimaryText)
                         Spacer(modifier = Modifier.height(4.dp))
-                        Text("Version 1.0", fontSize = 14.sp, color = Color(0xFF667085))
+                        Text("Version 1.0", fontSize = 14.sp, color = AppColors.SecondaryText)
                     }
                 }
             }
@@ -619,7 +674,7 @@ fun SettingsScreen(
                 Column {
                     Text(
                         "Choose how to split the report:",
-                        fontSize = 14.sp, color = Color(0xFF667085)
+                        fontSize = 14.sp, color = AppColors.SecondaryText
                     )
                     Spacer(modifier = Modifier.height(10.dp))
                     PdfSplitType.values().forEach { type ->
@@ -643,7 +698,7 @@ fun SettingsScreen(
                                     PdfSplitType.WEEK  -> "Group by week with weekly totals"
                                     PdfSplitType.MONTH -> "Group by month with monthly totals"
                                 }
-                                Text(desc, fontSize = 11.sp, color = Color(0xFF98A2B3))
+                                Text(desc, fontSize = 11.sp, color = AppColors.SecondaryText)
                             }
                         }
                     }
@@ -654,7 +709,7 @@ fun SettingsScreen(
                     showPdfSplitDialog = false
                     onExportPdf(selectedSplitType)
                 }) {
-                    Text("Export", fontWeight = FontWeight.Bold, color = Color(0xFF2563EB))
+                    Text("Export", fontWeight = FontWeight.Bold, color = AppColors.Primary)
                 }
             },
             dismissButton = {
@@ -668,17 +723,17 @@ fun SettingsScreen(
 private fun SettingsCard(title: String, subtitle: String, onClick: () -> Unit) {
     ElevatedCard(
         modifier = Modifier.fillMaxWidth().clickable { onClick() },
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.elevatedCardColors(containerColor = Color.White),
-        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)
+        shape = RoundedCornerShape(AppStyles.CardCornerRadius),
+        colors = CardDefaults.elevatedCardColors(containerColor = AppColors.CardBackground),
+        elevation = CardDefaults.elevatedCardElevation(defaultElevation = AppStyles.CardElevation)
     ) {
         Row(modifier = Modifier.padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(title, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color(0xFF101828))
+                Text(title, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = AppColors.PrimaryText)
                 Spacer(modifier = Modifier.height(4.dp))
-                Text(subtitle, fontSize = 14.sp, color = Color(0xFF667085))
+                Text(subtitle, fontSize = 14.sp, color = AppColors.SecondaryText)
             }
-            Text("›", fontSize = 24.sp, color = Color(0xFF9E9E9E))
+            Text("›", fontSize = 24.sp, color = AppColors.TextMuted)
         }
     }
 }

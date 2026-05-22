@@ -12,6 +12,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.expensetracker.ui.theme.AppColors
 import kotlinx.coroutines.launch
 
 @Composable
@@ -33,9 +34,9 @@ fun LoginScreen(
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text("Welcome Back", fontSize = 26.sp, fontWeight = FontWeight.ExtraBold, color = Color(0xFF101828))
+        Text("Welcome Back", fontSize = 26.sp, fontWeight = FontWeight.ExtraBold, color = AppColors.PrimaryText)
         Spacer(modifier = Modifier.height(4.dp))
-        Text("Sign in to your account", fontSize = 14.sp, color = Color(0xFF667085))
+        Text("Sign in to your account", fontSize = 14.sp, color = AppColors.SecondaryText)
         Spacer(modifier = Modifier.height(28.dp))
 
         OutlinedTextField(
@@ -60,7 +61,7 @@ fun LoginScreen(
                     onClick = { passwordVisible = !passwordVisible },
                     contentPadding = PaddingValues(horizontal = 8.dp)
                 ) {
-                    Text(if (passwordVisible) "Hide" else "Show", fontSize = 12.sp, color = Color(0xFF667085))
+                    Text(if (passwordVisible) "Hide" else "Show", fontSize = 12.sp, color = AppColors.SecondaryText)
                 }
             },
             modifier = Modifier.fillMaxWidth()
@@ -68,7 +69,7 @@ fun LoginScreen(
 
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
             TextButton(onClick = { showForgotPassword = true }, contentPadding = PaddingValues(0.dp)) {
-                Text("Forgot Password?", fontSize = 13.sp, color = Color(0xFF00A3FF))
+                Text("Forgot Password?", fontSize = 13.sp, color = AppColors.Primary)
             }
         }
 
@@ -78,9 +79,9 @@ fun LoginScreen(
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(10.dp),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFFFFEBEE))
+                colors = CardDefaults.cardColors(containerColor = AppColors.ExpenseSoft)
             ) {
-                Text(errorMessage!!, modifier = Modifier.padding(10.dp), fontSize = 13.sp, color = Color(0xFFB71C1C))
+                Text(errorMessage!!, modifier = Modifier.padding(10.dp), fontSize = 13.sp, color = AppColors.ExpenseError)
             }
             Spacer(modifier = Modifier.height(8.dp))
         }
@@ -110,7 +111,7 @@ fun LoginScreen(
             modifier = Modifier.fillMaxWidth().height(52.dp),
             shape = RoundedCornerShape(14.dp),
             enabled = !isLoading,
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00A3FF), contentColor = Color.White)
+            colors = ButtonDefaults.buttonColors(containerColor = AppColors.Primary, contentColor = Color.White)
         ) {
             if (isLoading) {
                 CircularProgressIndicator(modifier = Modifier.size(20.dp), color = Color.White, strokeWidth = 2.dp)
@@ -123,9 +124,9 @@ fun LoginScreen(
 
         Spacer(modifier = Modifier.height(12.dp))
         Row(horizontalArrangement = Arrangement.Center, modifier = Modifier.fillMaxWidth()) {
-            Text("Don't have an account? ", color = Color(0xFF667085), fontSize = 14.sp)
+            Text("Don't have an account? ", color = AppColors.SecondaryText, fontSize = 14.sp)
             TextButton(onClick = onNavigateToSignup, enabled = !isLoading, contentPadding = PaddingValues(0.dp)) {
-                Text("Sign up", color = Color(0xFF00A3FF), fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                Text("Sign up", color = AppColors.Primary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
             }
         }
     }
@@ -151,7 +152,7 @@ fun ForgotPasswordDialog(
         title = { Text("Reset Password", fontWeight = FontWeight.Bold) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text("Enter your email and we'll send you a reset link.", fontSize = 14.sp, color = Color(0xFF667085))
+                Text("Enter your email and we'll send you a reset link.", fontSize = 14.sp, color = AppColors.SecondaryText)
                 OutlinedTextField(
                     value = email, onValueChange = { email = it },
                     label = { Text("Email") }, singleLine = true,
@@ -161,11 +162,11 @@ fun ForgotPasswordDialog(
                     Card(
                         modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(8.dp),
                         colors = CardDefaults.cardColors(
-                            containerColor = if (isError) Color(0xFFFFEBEE) else Color(0xFFE8F5E9)
+                            containerColor = if (isError) AppColors.ExpenseSoft else AppColors.IncomeSoft
                         )
                     ) {
                         Text(message!!, modifier = Modifier.padding(10.dp), fontSize = 13.sp,
-                            color = if (isError) Color(0xFFB71C1C) else Color(0xFF1B5E20))
+                            color = if (isError) AppColors.ExpenseError else AppColors.SuccessIncome)
                     }
                 }
             }
@@ -186,7 +187,8 @@ fun ForgotPasswordDialog(
                         } finally { isLoading = false }
                     }
                 },
-                enabled = !isLoading, shape = RoundedCornerShape(12.dp)
+                enabled = !isLoading, shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = AppColors.Primary)
             ) {
                 if (isLoading) {
                     CircularProgressIndicator(modifier = Modifier.size(16.dp), color = Color.White, strokeWidth = 2.dp)

@@ -1,5 +1,6 @@
 package com.example.expensetracker.ui.screens
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -13,6 +14,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -20,6 +23,8 @@ import androidx.compose.ui.unit.sp
 import com.example.expensetracker.model.ExpenseProfile
 import com.example.expensetracker.model.RecurringTransaction
 import com.example.expensetracker.model.TransactionType
+import com.example.expensetracker.ui.theme.AppColors
+import com.example.expensetracker.ui.theme.AppStyles
 import com.example.expensetracker.utils.CategoryIconUtils
 import com.example.expensetracker.utils.formatMoney
 import java.text.SimpleDateFormat
@@ -44,7 +49,7 @@ fun RecurringScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Brush.verticalGradient(listOf(Color(0xFFEAF2FF), Color(0xFFF8FBFF), Color(0xFFFFFFFF))))
+            .background(AppColors.Background)
     ) {
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
@@ -57,11 +62,11 @@ fun RecurringScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("Recurring", fontSize = 28.sp, fontWeight = FontWeight.ExtraBold, color = Color(0xFF101828))
+                    Text("Recurring", fontSize = 28.sp, fontWeight = FontWeight.ExtraBold, color = AppColors.PrimaryText)
                     Button(
                         onClick = { showAddDialog = true },
                         shape = RoundedCornerShape(14.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2563EB))
+                        colors = ButtonDefaults.buttonColors(containerColor = AppColors.PrimaryAccent)
                     ) { Text("+ Add") }
                 }
             }
@@ -71,7 +76,7 @@ fun RecurringScreen(
 
             if (active.isNotEmpty()) {
                 item {
-                    Text("Active", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color(0xFF059669))
+                    Text("Active", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = AppColors.SuccessIncome)
                 }
                 items(active, key = { it.id }) { rec ->
                     RecurringCard(
@@ -88,7 +93,7 @@ fun RecurringScreen(
             if (inactive.isNotEmpty()) {
                 item {
                     Spacer(modifier = Modifier.height(4.dp))
-                    Text("Inactive", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color(0xFF667085))
+                    Text("Inactive", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = AppColors.SecondaryText)
                 }
                 items(inactive, key = { it.id }) { rec ->
                     RecurringCard(
@@ -106,8 +111,9 @@ fun RecurringScreen(
                 item {
                     ElevatedCard(
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(20.dp),
-                        colors = CardDefaults.elevatedCardColors(containerColor = Color.White)
+                        shape = RoundedCornerShape(AppStyles.CardCornerRadius),
+                        colors = CardDefaults.elevatedCardColors(containerColor = AppColors.CardBackground),
+                        elevation = CardDefaults.elevatedCardElevation(defaultElevation = AppStyles.CardElevation)
                     ) {
                         Column(
                             modifier = Modifier.padding(24.dp),
@@ -115,7 +121,7 @@ fun RecurringScreen(
                         ) {
                             Text("🔄 No recurring transactions", fontSize = 16.sp, fontWeight = FontWeight.Bold)
                             Spacer(modifier = Modifier.height(6.dp))
-                            Text("Add recurring expenses like Rent, Netflix, EMI.", fontSize = 14.sp, color = Color(0xFF667085))
+                            Text("Add recurring expenses like Rent, Netflix, EMI.", fontSize = 14.sp, color = AppColors.SecondaryText)
                         }
                     }
                 }
@@ -161,36 +167,41 @@ private fun RecurringCard(
 ) {
     var showDeleteDialog by rememberSaveable { mutableStateOf(false) }
     val isExpense = rec.type == TransactionType.EXPENSE
-    val icon = CategoryIconUtils.iconForCategory(rec.category, null)
+    val iconRes = CategoryIconUtils.iconResForCategory(rec.category, null)
 
     ElevatedCard(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(AppStyles.CardCornerRadius),
         colors = CardDefaults.elevatedCardColors(
-            containerColor = if (rec.isActive) Color.White else Color(0xFFF5F5F5)
+            containerColor = if (rec.isActive) AppColors.CardBackground else AppColors.Background
         ),
-        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.elevatedCardElevation(defaultElevation = AppStyles.CardElevation)
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(icon, fontSize = 24.sp)
+                Image(
+                    painter = painterResource(id = iconRes),
+                    contentDescription = rec.category,
+                    modifier = Modifier.size(26.dp),
+                    contentScale = ContentScale.Fit
+                )
                 Spacer(modifier = Modifier.width(10.dp))
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(rec.title, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color(0xFF101828))
+                    Text(rec.title, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = AppColors.PrimaryText)
                     Text(
                         "${rec.category} • ${rec.frequency}",
-                        fontSize = 12.sp, color = Color(0xFF667085)
+                        fontSize = 12.sp, color = AppColors.SecondaryText
                     )
                     Text(
                         "Next: ${rec.nextDueDate}",
-                        fontSize = 12.sp, color = Color(0xFF2563EB)
+                        fontSize = 12.sp, color = AppColors.PrimaryAccent
                     )
                 }
                 Text(
                     text = if (isExpense) "- ${formatMoney(rec.amount, currencyCode)}"
                            else "+ ${formatMoney(rec.amount, currencyCode)}",
                     fontSize = 15.sp, fontWeight = FontWeight.Bold,
-                    color = if (isExpense) Color(0xFFDC2626) else Color(0xFF059669)
+                    color = if (isExpense) AppColors.ExpenseError else AppColors.SuccessIncome
                 )
             }
 
@@ -207,22 +218,22 @@ private fun RecurringCard(
                     onClick = onToggle,
                     label = { Text(if (rec.isActive) "Active" else "Inactive", fontSize = 11.sp) },
                     colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = Color(0xFF10B981),
-                        selectedLabelColor = Color.White
+                        selectedContainerColor = AppColors.SuccessIncome,
+                        selectedLabelColor = AppColors.CardBackground
                     )
                 )
                 OutlinedButton(
                     onClick = onEdit,
                     enabled = !isDeleting,
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF2563EB))
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = AppColors.PrimaryAccent)
                 ) { Text("Edit") }
                 OutlinedButton(
                     onClick = { if (!isDeleting) showDeleteDialog = true },
                     enabled = !isDeleting,
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFDC2626))
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = AppColors.ExpenseError)
                 ) {
                     if (isDeleting) {
-                        CircularProgressIndicator(modifier = Modifier.size(14.dp), color = Color(0xFFDC2626), strokeWidth = 2.dp)
+                        CircularProgressIndicator(modifier = Modifier.size(14.dp), color = AppColors.ExpenseError, strokeWidth = 2.dp)
                         Spacer(modifier = Modifier.width(4.dp))
                         Text("Deleting...")
                     } else Text("Delete")
@@ -239,7 +250,7 @@ private fun RecurringCard(
             confirmButton = {
                 Button(
                     onClick = { onDelete(); showDeleteDialog = false },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFDC2626))
+                    colors = ButtonDefaults.buttonColors(containerColor = AppColors.ExpenseError)
                 ) { Text("Delete") }
             },
             dismissButton = { TextButton(onClick = { showDeleteDialog = false }) { Text("Cancel") } }
@@ -335,10 +346,21 @@ fun RecurringFormDialog(
                             OutlinedButton(onClick = { categoryMenuExpanded = true }) { Text("Select Category") }
                             DropdownMenu(expanded = categoryMenuExpanded, onDismissRequest = { categoryMenuExpanded = false }) {
                                 profile.categories.forEach { cat ->
+                                    val catIconRes = CategoryIconUtils.iconResForCategory(cat, null)
                                     DropdownMenuItem(
                                         text = {
-                                            val icon = CategoryIconUtils.iconForCategory(cat, null)
-                                            Text("$icon $cat")
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                            ) {
+                                                Image(
+                                                    painter = painterResource(id = catIconRes),
+                                                    contentDescription = cat,
+                                                    modifier = Modifier.size(20.dp),
+                                                    contentScale = ContentScale.Fit
+                                                )
+                                                Text(cat)
+                                            }
                                         },
                                         onClick = { category = cat; categoryMenuExpanded = false }
                                     )
@@ -384,7 +406,7 @@ fun RecurringFormDialog(
                     }
                 }
                 if (error.isNotBlank()) {
-                    item { Text(error, color = Color(0xFFDC2626), fontSize = 13.sp) }
+                    item { Text(error, color = AppColors.ExpenseError, fontSize = 13.sp) }
                 }
             }
         },

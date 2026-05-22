@@ -1,11 +1,13 @@
 package com.example.expensetracker
 
+import android.app.Activity
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.core.tween
@@ -19,6 +21,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
@@ -30,6 +33,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -39,7 +43,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
@@ -65,7 +71,9 @@ import com.example.expensetracker.ui.screens.RecurringScreen
 import com.example.expensetracker.ui.screens.ReportsScreen
 import com.example.expensetracker.ui.screens.SettingsScreen
 import com.example.expensetracker.ui.screens.SignupScreen
+import com.example.expensetracker.ui.theme.AppColors
 import com.example.expensetracker.ui.theme.ExpenseTrackerTheme
+import com.example.expensetracker.ui.theme.ThemePreference
 import com.example.expensetracker.utils.NetworkUtils
 import com.example.expensetracker.utils.createExpensePdf
 import com.example.expensetracker.utils.PdfSplitType
@@ -119,7 +127,21 @@ class MainActivity : ComponentActivity() {
         )
 
         setContent {
-            ExpenseTrackerTheme {
+            // Read initial preference before entering composition
+            var isDarkMode by remember { mutableStateOf(ThemePreference.isDarkMode(this@MainActivity)) }
+
+            ExpenseTrackerTheme(darkTheme = isDarkMode) {
+                // Update system status/navigation bar icon colours to match theme
+                val view = LocalView.current
+                if (!view.isInEditMode) {
+                    SideEffect {
+                        val window = (view.context as Activity).window
+                        WindowInsetsControllerCompat(window, view).apply {
+                            isAppearanceLightStatusBars     = !isDarkMode
+                            isAppearanceLightNavigationBars = !isDarkMode
+                        }
+                    }
+                }
                 val context = LocalContext.current
                 val store = remember { ExpenseStore(context) }
                 val repository = remember { SupabaseRepository() }
@@ -236,7 +258,7 @@ class MainActivity : ComponentActivity() {
                         SnackbarHost(hostState = snackbarHostState) { data ->
                             Snackbar(
                                 snackbarData = data,
-                                containerColor = Color(0xFF059669),
+                                containerColor = AppColors.SuccessIncome,
                                 contentColor = Color.White
                             )
                         }
@@ -249,7 +271,7 @@ class MainActivity : ComponentActivity() {
                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                     CircularProgressIndicator()
                                     Spacer(modifier = Modifier.height(12.dp))
-                                    Text("Checking session...", color = Color(0xFF667085))
+                                    Text("Checking session...", color = AppColors.SecondaryText)
                                 }
                             }
                         } else if (isLoggedIn == false) {
@@ -278,6 +300,11 @@ class MainActivity : ComponentActivity() {
                                 onExportPdf = onExportPdf,
                                 onExportCsv = { onExportCsv() },
                                 repository = repository,
+                                isDarkMode = isDarkMode,
+                                onDarkModeToggle = { enabled ->
+                                    isDarkMode = enabled
+                                    ThemePreference.setDarkMode(this@MainActivity, enabled)
+                                },
                                 onApplyRefreshRate = { mode, hz ->
                                     DisplayRefreshRateUtils.applyRefreshRate(this@MainActivity, mode, hz)
                                 },
@@ -324,6 +351,8 @@ fun ExpenseAppNavigation(
     onExportPdf: (PdfSplitType) -> Unit,
     onExportCsv: () -> Unit,
     repository: SupabaseRepository,
+    isDarkMode: Boolean = false,
+    onDarkModeToggle: (Boolean) -> Unit = {},
     onApplyRefreshRate: (mode: String, hz: Float) -> Unit = { _, _ -> },
     onLogout: () -> Unit
 ) {
@@ -408,7 +437,7 @@ fun ExpenseAppNavigation(
             SnackbarHost(hostState = snackbarHostState) { data ->
                 Snackbar(
                     snackbarData = data,
-                    containerColor = Color(0xFFDC2626),
+                    containerColor = AppColors.ExpenseError,
                     contentColor = Color.White
                 )
             }
@@ -422,10 +451,19 @@ fun ExpenseAppNavigation(
             // 64 dp white surface — no extra spacer needed.  The outer Scaffold's
             // innerPad already places us above the Android system nav buttons.
             Surface(
-                color = Color.White,
-                shadowElevation = 8.dp,
+                color = AppColors.CardBackground,
+                shadowElevation = if (isDarkMode) 0.dp else 8.dp,
                 modifier = Modifier.fillMaxWidth()
             ) {
+                // Top divider — visible in dark mode instead of shadow
+                if (isDarkMode) {
+                    androidx.compose.foundation.layout.Spacer(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(1.dp)
+                            .background(AppColors.Border)
+                    )
+                }
                 Box(modifier = Modifier.fillMaxWidth().height(64.dp)) {
                     NavigationBar(
                         containerColor = Color.Transparent,
@@ -435,22 +473,33 @@ fun ExpenseAppNavigation(
                         val navBackStackEntry by navController.currentBackStackEntryAsState()
                         val currentDestination = navBackStackEntry?.destination
                         items.forEach { screen ->
+                            val isSelected = currentDestination?.hierarchy?.any { it.route == screen.route } == true
+                            // Bitmap icons need explicit ColorFilter — NavigationBarItemDefaults
+                            // colors only affect vector drawables, not image assets.
+                            val iconTint = when {
+                                isSelected -> AppColors.SelectedNavIconText
+                                isDarkMode -> AppColors.UnselectedNavIconText  // bright slate in dark
+                                else       -> null  // use original icon colors in light mode
+                            }
                             NavigationBarItem(
                                 icon = {
                                     androidx.compose.foundation.Image(
                                         painter = androidx.compose.ui.res.painterResource(id = screen.iconResId),
                                         contentDescription = screen.title,
-                                        modifier = Modifier.size(22.dp)
+                                        modifier = Modifier.size(22.dp),
+                                        colorFilter = iconTint?.let {
+                                            androidx.compose.ui.graphics.ColorFilter.tint(it)
+                                        }
                                     )
                                 },
                                 label = { Text(screen.title) },
-                                selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true,
+                                selected = isSelected,
                                 colors = NavigationBarItemDefaults.colors(
-                                    selectedIconColor = Color.White,
-                                    selectedTextColor = Color(0xFF2563EB),
-                                    indicatorColor = Color(0xFFEAF2FF),
-                                    unselectedIconColor = Color.Gray,
-                                    unselectedTextColor = Color(0xFF667085)
+                                    selectedIconColor     = AppColors.SelectedNavIconText,
+                                    selectedTextColor     = AppColors.SelectedNavIconText,
+                                    indicatorColor        = AppColors.SelectedNavBackground,
+                                    unselectedIconColor   = AppColors.UnselectedNavIconText,
+                                    unselectedTextColor   = AppColors.UnselectedNavIconText
                                 ),
                                 onClick = {
                                     navController.navigate(screen.route) {
@@ -688,6 +737,8 @@ fun ExpenseAppNavigation(
                     onNavigateToBudgets = { navController.navigate(Screen.Budget.route) },
                     onNavigateToRecurring = { navController.navigate(Screen.Recurring.route) },
                     onApplyRefreshRate = onApplyRefreshRate,
+                    isDarkMode = isDarkMode,
+                    onDarkModeToggle = onDarkModeToggle,
                     repository = repository
                 )
             }

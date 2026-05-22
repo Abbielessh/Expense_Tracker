@@ -21,6 +21,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.expensetracker.ui.theme.AppColors
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -100,7 +101,7 @@ fun SignupScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFF5F7FA))
+            .background(AppColors.Background)
     ) {
         Column(
             modifier = Modifier
@@ -118,7 +119,7 @@ fun SignupScreen(
                     text = "Check your email",
                     fontSize = 24.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFF101828)
+                    color = AppColors.PrimaryText
                 )
                 Spacer(modifier = Modifier.height(20.dp))
 
@@ -126,7 +127,7 @@ fun SignupScreen(
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(18.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFFE8F5E9)),
+                    colors = CardDefaults.cardColors(containerColor = AppColors.IncomeSoft),
                     elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                 ) {
                     Column(
@@ -139,13 +140,13 @@ fun SignupScreen(
                             text = "Confirm your email",
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color(0xFF1B5E20)
+                            color = AppColors.SuccessIncome
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
                             text = "We sent a confirmation link to:",
                             fontSize = 13.sp,
-                            color = Color(0xFF388E3C),
+                            color = AppColors.SuccessIncome,
                             textAlign = TextAlign.Center
                         )
                         Spacer(modifier = Modifier.height(4.dp))
@@ -153,14 +154,14 @@ fun SignupScreen(
                             text = pendingEmail,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color = Color(0xFF1B5E20),
+                            color = AppColors.SuccessIncome,
                             textAlign = TextAlign.Center
                         )
                         Spacer(modifier = Modifier.height(10.dp))
                         Text(
                             text = "Tap the link in the email — the app will open automatically and log you in.",
                             fontSize = 13.sp,
-                            color = Color(0xFF2E7D32),
+                            color = AppColors.SuccessIncome,
                             textAlign = TextAlign.Center,
                             lineHeight = 19.sp
                         )
@@ -173,14 +174,14 @@ fun SignupScreen(
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF8E1)),
+                    colors = CardDefaults.cardColors(containerColor = AppColors.WarningSoft),
                     elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                 ) {
                     Text(
                         text = "ℹ️ Supabase may limit confirmation emails. If you don't receive it, check your Spam / Promotions folder or try again later.",
                         modifier = Modifier.padding(12.dp),
                         fontSize = 12.sp,
-                        color = Color(0xFF795548),
+                        color = AppColors.Warning,
                         textAlign = TextAlign.Center,
                         lineHeight = 18.sp
                     )
@@ -199,16 +200,16 @@ fun SignupScreen(
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(12.dp),
                             colors = CardDefaults.cardColors(
-                                containerColor = if (resendIsError) Color(0xFFFFEBEE)
-                                                else Color(0xFFE3F2FD)
+                                containerColor = if (resendIsError) AppColors.ExpenseSoft
+                                            else AppColors.PrimarySoft
                             )
                         ) {
                             Text(
                                 text = msg,
                                 modifier = Modifier.padding(12.dp),
                                 fontSize = 13.sp,
-                                color = if (resendIsError) Color(0xFFB71C1C)
-                                        else Color(0xFF0D47A1),
+                                color = if (resendIsError) AppColors.ExpenseError
+                                        else AppColors.Primary,
                                 textAlign = TextAlign.Center,
                                 lineHeight = 18.sp
                             )
@@ -245,10 +246,10 @@ fun SignupScreen(
                     shape = RoundedCornerShape(14.dp),
                     enabled = !isResending && cooldownSeconds == 0,
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF1565C0),
+                        containerColor = AppColors.Primary,
                         contentColor = Color.White,
-                        disabledContainerColor = Color(0xFFBBDEFB),
-                        disabledContentColor = Color(0xFF0D47A1)
+                        disabledContainerColor = AppColors.PrimarySoft,
+                        disabledContentColor = AppColors.PrimaryDark
                     )
                 ) {
                     when {
@@ -286,7 +287,7 @@ fun SignupScreen(
                         .height(52.dp),
                     shape = RoundedCornerShape(14.dp),
                     colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = Color(0xFF1565C0)
+                        contentColor = AppColors.Primary
                     )
                 ) {
                     Text("Back to Login", fontWeight = FontWeight.SemiBold)
@@ -298,7 +299,7 @@ fun SignupScreen(
                 TextButton(onClick = onNavigateToLogin) {
                     Text(
                         text = "Already confirmed? Go to Login",
-                        color = Color(0xFF667085),
+                        color = AppColors.SecondaryText,
                         fontSize = 13.sp
                     )
                 }
@@ -310,13 +311,13 @@ fun SignupScreen(
                     text = "Create Account",
                     fontSize = 26.sp,
                     fontWeight = FontWeight.ExtraBold,
-                    color = Color(0xFF101828)
+                    color = AppColors.PrimaryText
                 )
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(
                     text = "Sign up to start tracking your expenses",
                     fontSize = 14.sp,
-                    color = Color(0xFF667085)
+                    color = AppColors.SecondaryText
                 )
                 Spacer(modifier = Modifier.height(28.dp))
 
@@ -344,7 +345,7 @@ fun SignupScreen(
                 Text(
                     text = "Password must be at least 6 characters",
                     fontSize = 11.sp,
-                    color = Color(0xFF9E9E9E),
+                    color = AppColors.TextMuted,
                     modifier = Modifier.fillMaxWidth()
                 )
 
@@ -358,13 +359,13 @@ fun SignupScreen(
                         Card(
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(10.dp),
-                            colors = CardDefaults.cardColors(containerColor = Color(0xFFFFEBEE))
+                            colors = CardDefaults.cardColors(containerColor = AppColors.ExpenseSoft)
                         ) {
                             Text(
                                 text = msg,
                                 modifier = Modifier.padding(10.dp),
                                 fontSize = 13.sp,
-                                color = Color(0xFFB71C1C),
+                                color = AppColors.ExpenseError,
                                 textAlign = TextAlign.Center
                             )
                         }
@@ -395,7 +396,7 @@ fun SignupScreen(
                     shape = RoundedCornerShape(14.dp),
                     enabled = !isLoading,
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF00A3FF),
+                        containerColor = AppColors.Primary,
                         contentColor = Color.White
                     )
                 ) {
@@ -420,7 +421,7 @@ fun SignupScreen(
                 ) {
                     Text(
                         text = "Already have an account? ",
-                        color = Color(0xFF667085),
+                        color = AppColors.SecondaryText,
                         fontSize = 14.sp
                     )
                     TextButton(
@@ -430,7 +431,7 @@ fun SignupScreen(
                     ) {
                         Text(
                             text = "Login",
-                            color = Color(0xFF00A3FF),
+                            color = AppColors.Primary,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold
                         )
